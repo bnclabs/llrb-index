@@ -3,5 +3,18 @@ name = "llrb-index"
 version = "0.1.0"
 authors = ["prataprc <prataprc@gmail.com>"]
 edition = "2018"
+description = "In memory Left Leaning Red Black index"
+documentation = "https://docs.rs/llrb-index"
+homepage = "https://github.com/bnclabs/llrb-index"
+repository = "https://github.com/bnclabs/llrb-index"
+keywords = ["storage", "llrb", "sorting"]
+categories = ["storage", "index"]
+license = "AGPL-3.0"
+exclude = ["template/**"]
+readme = "README.md"
 
 [dependencies]
+
+[badges]
+maintenance = { status = "actively-developed" }
+travis-ci = { repository = "bnclabs/llrb-index" }
