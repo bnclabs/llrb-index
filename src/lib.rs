@@ -1,7 +1,8 @@
+mod error;
+mod llrb;
+
+pub use crate::error::LlrbError;
+pub use crate::llrb::{Llrb, Node};
+
 #[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+mod llrb_test;
