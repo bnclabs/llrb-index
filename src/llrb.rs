@@ -17,8 +17,8 @@ use crate::error::LlrbError;
 /// [llrb]: https://en.wikipedia.org/wiki/Left-leaning_red-black_tree
 pub struct Llrb<K, V>
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     name: String,
     root: Option<Box<Node<K, V>>>,
@@ -27,8 +27,8 @@ where
 
 impl<K, V> Clone for Llrb<K, V>
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     fn clone(&self) -> Llrb<K, V> {
         Llrb {
@@ -42,8 +42,8 @@ where
 /// Different ways to construct a new Llrb instance.
 impl<K, V> Llrb<K, V>
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     /// Create an empty instance of Llrb, identified by `name`.
     /// Applications can choose unique names.
@@ -58,9 +58,8 @@ where
         }
     }
 
-    /// Create a new instance of Llrb tree and load it with entries from
-    /// `iter`. Note that iterator shall return items that implement
-    /// [AsEntry].
+    /// Create a new instance of Llrb tree and load it with entries
+    /// from `iter`.
     pub fn load_from(
         name: String,
         iter: impl Iterator<Item = (K, V)>,
@@ -77,8 +76,8 @@ where
 /// Maintanence API.
 impl<K, V> Llrb<K, V>
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     /// Identify this instance. Applications can choose unique names while
     /// creating Llrb instances.
@@ -95,8 +94,8 @@ where
 /// CRUD operations on Llrb instance.
 impl<K, V> Llrb<K, V>
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     /// Get the value for key.
     pub fn get<Q>(&self, key: &Q) -> Option<V>
@@ -252,8 +251,8 @@ where
 
 impl<K, V> Llrb<K, V>
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     fn upsert(
         node: Option<Box<Node<K, V>>>,
@@ -482,8 +481,8 @@ where
 
 fn is_red<K, V>(node: Option<&Node<K, V>>) -> bool
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     match node {
         None => false,
@@ -493,8 +492,8 @@ where
 
 fn is_black<K, V>(node: Option<&Node<K, V>>) -> bool
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     match node {
         None => true,
@@ -504,8 +503,8 @@ where
 
 pub struct Iter<'a, K, V>
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     root: Option<&'a Node<K, V>>,
     node_iter: std::vec::IntoIter<(K, V)>,
@@ -516,8 +515,8 @@ where
 
 impl<'a, K, V> Iter<'a, K, V>
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     fn scan_iter(
         &self,
@@ -555,8 +554,8 @@ where
 
 impl<'a, K, V> Iterator for Iter<'a, K, V>
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     type Item = (K, V);
 
@@ -586,8 +585,8 @@ where
 
 pub struct Range<'a, K, V>
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     root: Option<&'a Node<K, V>>,
     node_iter: std::vec::IntoIter<(K, V)>,
@@ -599,8 +598,8 @@ where
 
 impl<'a, K, V> Range<'a, K, V>
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     pub fn rev(self) -> Reverse<'a, K, V> {
         Reverse {
@@ -650,8 +649,8 @@ where
 
 impl<'a, K, V> Iterator for Range<'a, K, V>
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     type Item = (K, V);
 
@@ -694,8 +693,8 @@ where
 
 pub struct Reverse<'a, K, V>
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     root: Option<&'a Node<K, V>>,
     node_iter: std::vec::IntoIter<(K, V)>,
@@ -707,8 +706,8 @@ where
 
 impl<'a, K, V> Reverse<'a, K, V>
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     fn reverse_iter(
         &self,
@@ -747,8 +746,8 @@ where
 
 impl<'a, K, V> Iterator for Reverse<'a, K, V>
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     type Item = (K, V);
 
@@ -795,8 +794,8 @@ where
 #[derive(Clone)]
 pub struct Node<K, V>
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     key: K,
     value: V,
@@ -808,8 +807,8 @@ where
 // Primary operations on a single node.
 impl<K, V> Node<K, V>
 where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
+    K: Debug + Clone + Ord,
+    V: Clone,
 {
     // CREATE operation
     fn new(key: K, value: V, black: bool) -> Box<Node<K, V>> {
@@ -874,21 +873,5 @@ where
     #[inline]
     fn is_black(&self) -> bool {
         self.black
-    }
-}
-
-impl<K, V> Default for Node<K, V>
-where
-    K: Debug + Default + Clone + Ord,
-    V: Default + Clone,
-{
-    fn default() -> Node<K, V> {
-        Node {
-            key: Default::default(),
-            value: Default::default(),
-            black: false,
-            left: None,
-            right: None,
-        }
     }
 }
