@@ -60,10 +60,11 @@ where
 
     /// Create a new instance of Llrb tree and load it with entries
     /// from `iter`.
-    pub fn load_from(
-        name: String,
-        iter: impl Iterator<Item = (K, V)>,
-    ) -> Result<Llrb<K, V>, LlrbError> {
+    pub fn load_from<S, I>(name: S, iter: I) -> Result<Llrb<K, V>, LlrbError>
+    where
+        S: AsRef<str>,
+        I: Iterator<Item = (K, V)>,
+    {
         let mut llrb = Llrb::new(name);
         for (key, value) in iter {
             llrb.set(key, value);
@@ -146,8 +147,8 @@ where
         }
     }
 
-    /// Set operation for non-mvcc instance. If key is already
-    /// present, return the previous value.
+    /// Set value for key. If there is an existing entry for key,
+    /// overwrite the old value with new value and return the old value.
     pub fn set(&mut self, key: K, value: V) -> Option<V> {
         let root = self.root.take();
 
@@ -167,13 +168,12 @@ where
         }
     }
 
-    /// Delete the given key from non-mvcc intance, in LSM mode it simply marks
-    /// the version as deleted. Note that back-to-back delete for the same
-    /// key shall collapse into a single delete.
+    /// Delete key from this instance and return its value. If key is
+    /// not present, then delete is effectively a no-op.
     pub fn delete<Q>(&mut self, key: &Q) -> Option<V>
     where
-        K: Borrow<Q> + From<Q>,
-        Q: Clone + Ord + ?Sized,
+        K: Borrow<Q>,
+        Q: Ord + ?Sized,
     {
         let root = self.root.take();
         let (root, old_value) = match Llrb::do_delete(root, key) {
@@ -190,18 +190,18 @@ where
         old_value
     }
 
-    /// validate llrb rules:
-    /// a. No consecutive reds should be found in the tree.
-    /// b. number of blacks should be same on both sides.
+    /// Validate LLRB tree with following rules:
+    /// * From root to any leaf, no consecutive reds allowed in its path.
+    /// * Number of blacks should be same on under left child and right child.
+    /// * Make sure that keys are in sorted order.
     pub fn validate(&self) -> Result<(), LlrbError> {
         let root = self.root.as_ref().map(|item| item.deref());
         let (fromred, nblacks) = (is_red(root), 0);
-        self.validate_tree(root, fromred, nblacks)?;
+        Llrb::validate_tree(root, fromred, nblacks)?;
         Ok(())
     }
 
     fn validate_tree(
-        &self,
         node: Option<&Node<K, V>>,
         fromred: bool,
         mut nblacks: u64,
@@ -220,8 +220,8 @@ where
         let node = &node.as_ref().unwrap();
         let left = node.left_deref();
         let right = node.right_deref();
-        let lblacks = self.validate_tree(left, red, nblacks)?;
-        let rblacks = self.validate_tree(right, red, nblacks)?;
+        let lblacks = Llrb::validate_tree(left, red, nblacks)?;
+        let rblacks = Llrb::validate_tree(right, red, nblacks)?;
         if lblacks != rblacks {
             let err = format!(
                 "llrb_store: unbalanced blacks left: {} and right: {}",
