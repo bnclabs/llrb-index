@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 use std::cmp::{Ord, Ordering};
 use std::fmt::Debug;
-use std::ops::{Bound, Deref, DerefMut};
+use std::ops::{Bound, DerefMut};
 
 use crate::error::LlrbError;
 
@@ -110,7 +110,7 @@ where
         K: Borrow<Q>,
         Q: Ord + ?Sized,
     {
-        let root = self.root.as_ref().map(|item| item.deref());
+        let root = self.root.as_ref().map(std::ops::Deref::deref);
         self.do_get(root, key)
     }
 
@@ -133,7 +133,7 @@ where
     /// Return an iterator over all entries in this instance.
     pub fn iter(&self) -> Iter<K, V> {
         Iter {
-            root: self.root.as_ref().map(|item| item.deref()),
+            root: self.root.as_ref().map(std::ops::Deref::deref),
             node_iter: vec![].into_iter(),
             after_key: Bound::Unbounded,
             limit: 100,
@@ -144,7 +144,7 @@ where
     /// Range over all entries from low to high.
     pub fn range(&self, low: Bound<K>, high: Bound<K>) -> Range<K, V> {
         Range {
-            root: self.root.as_ref().map(|item| item.deref()),
+            root: self.root.as_ref().map(std::ops::Deref::deref),
             node_iter: vec![].into_iter(),
             low,
             high,
@@ -218,7 +218,7 @@ where
     /// * Number of blacks should be same on under left child and right child.
     /// * Make sure that keys are in sorted order.
     pub fn validate(&self) -> Result<(), LlrbError> {
-        let root = self.root.as_ref().map(|item| item.deref());
+        let root = self.root.as_ref().map(std::ops::Deref::deref);
         let (fromred, nblacks) = (is_red(root), 0);
         Llrb::validate_tree(root, fromred, nblacks)?;
         Ok(())
@@ -233,7 +233,7 @@ where
             return Ok(nblacks);
         }
 
-        let red = is_red(node.as_ref().map(|item| item.deref()));
+        let red = is_red(node.as_ref().map(std::ops::Deref::deref));
         if fromred && red {
             return Err(LlrbError::ConsecutiveReds);
         }
@@ -879,21 +879,21 @@ where
     }
 
     fn left_deref(&self) -> Option<&Node<K, V>> {
-        self.left.as_ref().map(|item| item.deref())
+        self.left.as_ref().map(std::ops::Deref::deref)
     }
 
     fn right_deref(&self) -> Option<&Node<K, V>> {
-        self.right.as_ref().map(|item| item.deref())
+        self.right.as_ref().map(std::ops::Deref::deref)
     }
 
     #[allow(dead_code)]
     fn left_deref_mut(&mut self) -> Option<&mut Node<K, V>> {
-        self.left.as_mut().map(|item| item.deref_mut())
+        self.left.as_mut().map(std::ops::DerefMut::deref_mut)
     }
 
     #[allow(dead_code)]
     fn right_deref_mut(&mut self) -> Option<&mut Node<K, V>> {
-        self.right.as_mut().map(|item| item.deref_mut())
+        self.right.as_mut().map(std::ops::DerefMut::deref_mut)
     }
 
     // prepend operation, equivalent to SET / INSERT / UPDATE
