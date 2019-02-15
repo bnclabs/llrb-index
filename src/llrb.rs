@@ -663,7 +663,7 @@ where
         if item.is_none() {
             let mut acc: Vec<(K, V)> = Vec::with_capacity(self.limit);
             self.range_iter(self.root, &mut acc);
-            item = if acc.is_empty() {
+            item = if !acc.is_empty() {
                 self.low = Bound::Excluded(acc.last().unwrap().0.clone());
                 self.node_iter = acc.into_iter();
                 self.node_iter.next()
@@ -761,7 +761,7 @@ where
         if item.is_none() {
             let mut acc: Vec<(K, V)> = Vec::with_capacity(self.limit);
             self.reverse_iter(self.root, &mut acc);
-            item = if acc.is_empty() {
+            item = if !acc.is_empty() {
                 self.high = Bound::Excluded(acc.last().unwrap().0.clone());
                 self.node_iter = acc.into_iter();
                 self.node_iter.next()

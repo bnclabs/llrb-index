@@ -155,7 +155,7 @@ fn test_crud() {
         assert_eq!(llrb.validate(), Ok(()));
     }
 
-    //println!("count {}", llrb.count());
+    println!("count {}", llrb.count());
 
     // test iter
     let (mut iter, mut iter_ref) = (llrb.iter(), refns.iter());
@@ -180,11 +180,13 @@ fn test_crud() {
         loop {
             match (iter.next(), iter_ref.next()) {
                 (Some(item), Some(ref_item)) => {
+                    //println!("{:?} {:?}", ref_item, item);
                     assert_eq!(item.0, ref_item.0);
                     assert_eq!(item.1, ref_item.1);
                 }
                 (None, None) => break,
-                (_, _) => panic!("invalid"),
+                (Some(item), None) => panic!("invalid item: {:?}", item),
+                (None, Some(ref_item)) => panic!("invalid none: {:?}", ref_item),
             }
         }
 
