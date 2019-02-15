@@ -1,8 +1,8 @@
 Left Leaning Red Black Tree
 ===========================
 
-[![Rustdoc](https://img.shields.io/badge/rustdoc-hosted-blue.svg)](https://docs.rs/llbr-index)
-[![Build Status](https://travis-ci.org/bnclabs/llbr-index.svg?branch=master)](https://travis-ci.org/bnclabs/llbr-index)
+[![Rustdoc](https://img.shields.io/badge/rustdoc-hosted-blue.svg)](https://docs.rs/llrb-index)
+[![Build Status](https://travis-ci.org/bnclabs/llrb-index.svg?branch=master)](https://travis-ci.org/bnclabs/llrb-index)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 This package implements LLRB, Left Leaning Red Black, tree a popular
