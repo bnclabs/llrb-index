@@ -24,7 +24,7 @@ impl RefNodes {
         }
     }
 
-    fn iter<'a>(&'a self) -> std::vec::IntoIter<(i64, i64)> {
+    fn iter(&self) -> std::vec::IntoIter<(i64, i64)> {
         self.entries
             .iter()
             .filter_map(|item| {

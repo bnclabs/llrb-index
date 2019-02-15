@@ -131,7 +131,7 @@ fn test_crud() {
     let mut llrb: Llrb<i64, i64> = Llrb::new("test-llrb");
     let mut refns = RefNodes::new(size);
 
-    for _ in 0..100000 {
+    for _ in 0..100_000 {
         let key: i64 = (random::<i64>() % (size as i64)).abs();
         let value: i64 = random();
         let op: i64 = (random::<i64>() % 2).abs();

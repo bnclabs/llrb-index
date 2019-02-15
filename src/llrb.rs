@@ -11,6 +11,8 @@ use crate::error::LlrbError;
 // TODO: optimize comparison
 // TODO: llrb_depth_histogram, as feature, to measure the depth of LLRB tree.
 
+type DelminType<K, V> = (Option<Box<Node<K, V>>>, Option<Node<K, V>>);
+
 /// Llrb manage a single instance of in-memory index using
 /// [left-leaning-red-black][llrb] tree.
 ///
@@ -342,9 +344,7 @@ where
         }
     }
 
-    fn delete_min(
-        node: Option<Box<Node<K, V>>> // root node
-    ) -> (Option<Box<Node<K, V>>>, Option<Node<K, V>>) {
+    fn delete_min(node: Option<Box<Node<K, V>>>) -> DelminType<K, V> {
         if node.is_none() {
             return (None, None);
         }
@@ -548,7 +548,7 @@ where
             return false;
         }
 
-        return self.scan_iter(right, acc);
+        self.scan_iter(right, acc)
     }
 }
 
@@ -572,7 +572,7 @@ where
         let mut acc: Vec<(K, V)> = Vec::with_capacity(self.limit);
         self.scan_iter(self.root, &mut acc);
 
-        if acc.len() == 0 {
+        if acc.is_empty() {
             self.fin = true;
             None
         } else {
@@ -643,7 +643,7 @@ where
             return false;
         }
 
-        return self.range_iter(right, acc);
+        self.range_iter(right, acc)
     }
 }
 
@@ -660,10 +660,10 @@ where
         }
 
         let mut item = self.node_iter.next();
-        if let None = item {
+        if item.is_none() {
             let mut acc: Vec<(K, V)> = Vec::with_capacity(self.limit);
             self.range_iter(self.root, &mut acc);
-            item = if acc.len() > 0 {
+            item = if acc.is_empty() {
                 self.low = Bound::Excluded(acc.last().unwrap().0.clone());
                 self.node_iter = acc.into_iter();
                 self.node_iter.next()
@@ -740,7 +740,7 @@ where
             return false;
         }
 
-        return self.reverse_iter(left, acc);
+        self.reverse_iter(left, acc)
     }
 }
 
@@ -758,10 +758,10 @@ where
         }
 
         let mut item = self.node_iter.next();
-        if let None = item {
+        if item.is_none() {
             let mut acc: Vec<(K, V)> = Vec::with_capacity(self.limit);
             self.reverse_iter(self.root, &mut acc);
-            item = if acc.len() > 0 {
+            item = if acc.is_empty() {
                 self.high = Bound::Excluded(acc.last().unwrap().0.clone());
                 self.node_iter = acc.into_iter();
                 self.node_iter.next()
