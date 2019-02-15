@@ -5,7 +5,7 @@
 * Optimized for in-memory index.
 * Each entry in LLRB instance correspond to a {Key, Value} pair.
 * Parametrised over Key type and Value type.
-* CRUD operations, via set(), get(), delete() api.
+* CRUD operations, via set(), get(), delete() API.
 * Read optimized.
 * Full table scan, to iterate over all entries.
 * Range scan, to iterate between a ``low`` and ``high``.

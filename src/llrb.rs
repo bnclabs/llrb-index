@@ -76,7 +76,7 @@ where
     }
 }
 
-/// Maintanence API.
+/// Maintenance API.
 impl<K, V> Llrb<K, V>
 where
     K: Debug + Clone + Ord,
@@ -393,7 +393,7 @@ where
     //
     fn rotate_left(mut node: Box<Node<K, V>>) -> Box<Node<K, V>> {
         if is_black(node.right_deref()) {
-            panic!("rotateleft(): rotating a black link ? call the programmer");
+            panic!("rotateleft(): rotating a black link ? Call the programmer");
         }
         let mut x = node.right.take().unwrap();
         node.right = x.left.take();
@@ -415,7 +415,7 @@ where
     //
     fn rotate_right(mut node: Box<Node<K, V>>) -> Box<Node<K, V>> {
         if is_black(node.left_deref()) {
-            panic!("rotateright(): rotating a black link ? call the programmer")
+            panic!("rotateright(): rotating a black link ? Call the programmer")
         }
         let mut x = node.left.take().unwrap();
         node.left = x.right.take();

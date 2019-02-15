@@ -5,7 +5,7 @@
 //! - Each entry in LLRB instance correspond to a {Key, Value} pair.
 //! - Parametrised over Key type and Value type.
 //! - CRUD operations, via set(), get(), delete() api.
-//! - No Durability gaurantee.
+//! - No Durability guarantee.
 //! - Not thread safe.
 //! - Full table scan, to iterate over all entries.
 //! - Range scan, to iterate between a ``low`` and ``high``.

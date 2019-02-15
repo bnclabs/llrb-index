@@ -113,7 +113,7 @@ fn test_delete() {
         }
     }
 
-    // delete all entry. and set new entries
+    // delete all entry. And set new entries
     for i in 0..10 {
         let val = llrb.delete(&i);
         let refval = refns.delete(i);
