@@ -14,3 +14,7 @@
 // * {key=String(32), value=String(256)}
 //
 // Precreate the set before applying the operation.
+
+fn main() {
+    unreachable!()
+}
