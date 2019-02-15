@@ -9,4 +9,6 @@ pub enum LlrbError {
     UnbalancedBlacks(String),
     /// Fatal case, index entries are not in sort-order.
     SortError(String),
+    /// Returned by create() API when key is already present.
+    OverwriteKey,
 }

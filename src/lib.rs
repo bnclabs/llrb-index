@@ -4,7 +4,7 @@
 //!
 //! - Each entry in LLRB instance correspond to a {Key, Value} pair.
 //! - Parametrised over Key type and Value type.
-//! - CRUD operations, via set(), get(), delete() api.
+//! - CRUD operations, via create(), set(), get(), delete() api.
 //! - No Durability guarantee.
 //! - Not thread safe.
 //! - Full table scan, to iterate over all entries.
@@ -34,8 +34,9 @@
 //! use llrb_index::Llrb;
 //! let mut llrb: Llrb<String,String> = Llrb::new("myinstance");
 //!
-//! llrb.set("key1".to_string(), "value1".to_string());
-//! llrb.set("key2".to_string(), "value2".to_string());
+//! llrb.create("key1".to_string(), "value1".to_string());
+//! llrb.create("key2".to_string(), "value2".to_string());
+//! llrb.set("key2".to_string(), "value3".to_string());
 //!
 //! let n = llrb.count();
 //! assert_eq!(n, 2);
@@ -43,7 +44,7 @@
 //! let value = llrb.get("key1").unwrap();
 //! assert_eq!(value, "value1".to_string());
 //! let value = llrb.get("key2").unwrap();
-//! assert_eq!(value, "value2".to_string());
+//! assert_eq!(value, "value3".to_string());
 //!
 //! let old_value = llrb.delete("key1").unwrap();
 //! assert_eq!(old_value, "value1".to_string());

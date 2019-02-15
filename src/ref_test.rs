@@ -104,6 +104,14 @@ impl RefNodes {
             .into_iter()
     }
 
+    fn create(&mut self, key: i64, value: i64) {
+        let entry = &mut self.entries[key as usize];
+        if entry.key < 0 {
+            entry.key = key;
+            entry.value = value;
+        };
+    }
+
     fn set(&mut self, key: i64, value: i64) -> Option<i64> {
         let entry = &mut self.entries[key as usize];
         let old_value = if entry.key < 0 {
