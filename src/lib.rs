@@ -1,4 +1,4 @@
-//! LLRB, [left-leaning-red-black][llrb], tree is memory optimized data
+//! LLRB, [left-leaning-red-black][wiki-llrb], tree is memory optimized data
 //! structure for indexing sortable data. This package provides a basic
 //! implementation with following properties:
 //!
@@ -113,7 +113,7 @@
 //! assert_eq!(item, Some(("key1".to_string(), "value1".to_string())));
 //! ```
 //!
-//! [llrb]: https://en.wikipedia.org/wiki/Left-leaning_red-black_tree
+//! [wiki-llrb]: https://en.wikipedia.org/wiki/Left-leaning_red-black_tree
 mod error;
 mod llrb;
 
