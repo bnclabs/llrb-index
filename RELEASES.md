@@ -1,7 +1,15 @@
-Tip
-===
+0.1.0
+=====
 
-[On going development]
+* Self-balancing data structure.
+* Optimized for in-memory index.
+* Each entry in LLRB instance correspond to a {Key, Value} pair.
+* Parametrised over Key type and Value type.
+* CRUD operations, via set(), get(), delete() api.
+* Read optimized.
+* Full table scan, to iterate over all entries.
+* Range scan, to iterate between a ``low`` and ``high``.
+* Reverse iteration.
 
 Release Checklist
 =================
@@ -14,11 +22,13 @@ Release Checklist
   * cargo +stable build; cargo +nightly build
   * cargo +stable doc
   * cargo +nightly clippy --all-targets --all-features
+  * cargo +nightly audit
   * cargo +nightly test
   * cargo +nightly bench
   * cargo +nightly benchcmp <old> <new>
   * cargo fix --edition --all-targets
 * Travis-CI integration.
+* Spell check.
 * Create a git-tag for the new version.
 * Cargo publish the new version.
 * Badges
