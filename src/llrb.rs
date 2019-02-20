@@ -3,6 +3,8 @@ use std::cmp::{Ord, Ordering};
 use std::fmt::Debug;
 use std::ops::{Bound, DerefMut};
 
+use rand::Rng;
+
 use crate::error::LlrbError;
 
 // TODO: Sizing.
@@ -128,6 +130,38 @@ where
             };
         }
         None
+    }
+
+    /// Return a random entry from this index.
+    pub fn random<R: Rng>(&self, rng: &mut R) -> Option<(K, V)> {
+        let mut node = self.root.as_ref().map(std::ops::Deref::deref);
+
+        if node.is_none() {
+            return None;
+        }
+
+        let r: i32 = rng.gen();
+        let mut depth = 0;
+        loop {
+            let nref = node.unwrap();
+
+            if r % 40 == depth {
+                break Some((nref.key.clone(), nref.value.clone()));
+            }
+            depth += 1;
+
+            let next = if r % 2 == 0 {
+                nref.left_deref()
+            } else {
+                nref.right_deref()
+            };
+
+            if next.is_none() {
+                break Some((nref.key.clone(), nref.value.clone()));
+            } else {
+                node = next;
+            }
+        }
     }
 
     /// Return an iterator over all entries in this instance.

@@ -1,6 +1,8 @@
 use std::ops::Bound;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use rand::prelude::random;
+use rand::{rngs::SmallRng, SeedableRng};
 
 use crate::error::LlrbError;
 use crate::llrb::Llrb;
@@ -66,6 +68,27 @@ fn test_create() {
             (None, None) => break,
             (_, _) => panic!("invalid"),
         }
+    }
+}
+
+#[test]
+fn test_random() {
+    let mut llrb: Llrb<i64, i64> = Llrb::new("test-llrb");
+    let mut rng = SmallRng::from_seed(make_seed().to_le_bytes());
+
+    assert_eq!(llrb.random(&mut rng), None);
+
+    assert!(llrb.create(0, 0).is_none());
+    assert_eq!(llrb.random(&mut rng), Some((0, 0)));
+    assert_eq!(llrb.random(&mut rng), Some((0, 0)));
+
+    for key in 1..1000000 {
+        assert!(llrb.set(key, key * 10).is_none());
+    }
+    for _i in 0..2000000 {
+        let (key, value) = llrb.random(&mut rng).unwrap();
+        assert!(key >= 0 && key < 1000000);
+        assert_eq!(value, key * 10);
     }
 }
 
@@ -269,6 +292,13 @@ fn test_crud() {
             }
         }
     }
+}
+
+fn make_seed() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos()
 }
 
 include!("./ref_test.rs");
