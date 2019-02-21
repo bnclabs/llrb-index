@@ -12,6 +12,7 @@ use crate::error::LlrbError;
 // as key (K) / value (V) for Llrb.
 // TODO: optimize comparison
 // TODO: llrb_depth_histogram, as feature, to measure the depth of LLRB tree.
+// TODO: validate should return relevant statistics.
 
 /// tuple of replaced node, and old value.
 type WrType<K, V> = (Option<Box<Node<K, V>>>, Option<V>);
@@ -140,12 +141,13 @@ where
             return None;
         }
 
-        let r: i32 = rng.gen();
         let mut depth = 0;
+        let at_depth = rng.gen::<u8>() % 40;
         loop {
+            let r: u8 = rng.gen();
             let nref = node.unwrap();
 
-            if r % 40 == depth {
+            if at_depth == depth {
                 break Some((nref.key.clone(), nref.value.clone()));
             }
             depth += 1;
