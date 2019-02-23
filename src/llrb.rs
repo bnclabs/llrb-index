@@ -137,9 +137,7 @@ where
     pub fn random<R: Rng>(&self, rng: &mut R) -> Option<(K, V)> {
         let mut node = self.root.as_ref().map(std::ops::Deref::deref);
 
-        if node.is_none() {
-            return None;
-        }
+        node?;
 
         let mut depth = 0;
         let at_depth = rng.gen::<u8>() % 40;

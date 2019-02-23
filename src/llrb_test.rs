@@ -82,12 +82,12 @@ fn test_random() {
     assert_eq!(llrb.random(&mut rng), Some((0, 0)));
     assert_eq!(llrb.random(&mut rng), Some((0, 0)));
 
-    for key in 1..1000000 {
+    for key in 1..1_000_000 {
         assert!(llrb.set(key, key * 10).is_none());
     }
-    for _i in 0..2000000 {
+    for _i in 0..2_000_000 {
         let (key, value) = llrb.random(&mut rng).unwrap();
-        assert!(key >= 0 && key < 1000000);
+        assert!(key >= 0 && key < 1_000_000);
         assert_eq!(value, key * 10);
     }
 }
@@ -260,7 +260,7 @@ fn test_crud() {
     }
 
     // ranges and reverses
-    for _ in 0..10000 {
+    for _ in 0..1_0000 {
         let (low, high) = random_low_high(size);
         //println!("test loop {:?} {:?}", low, high);
 
