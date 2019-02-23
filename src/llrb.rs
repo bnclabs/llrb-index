@@ -31,7 +31,7 @@ where
 {
     name: String,
     root: Option<Box<Node<K, V>>>,
-    n_count: u64, // number of entries in the tree.
+    n_count: usize, // number of entries in the tree.
 }
 
 impl<K, V> Clone for Llrb<K, V>
@@ -96,7 +96,7 @@ where
     }
 
     /// Return number of entries in this instance.
-    pub fn count(&self) -> u64 {
+    pub fn count(&self) -> usize {
         self.n_count
     }
 }
