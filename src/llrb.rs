@@ -1,14 +1,14 @@
 use std::borrow::Borrow;
 use std::cmp::{Ord, Ordering};
+use std::fmt::{self, Display};
 use std::ops::{Bound, DerefMut};
 
 use rand::Rng;
 
+use crate::depth::Depth;
 use crate::error::LlrbError;
 
 // TODO: Sizing.
-// TODO: Implement and document primitive types, std-types that can be used
-// as key (K) / value (V) for Llrb.
 // TODO: optimize comparison
 // TODO: llrb_depth_histogram, as feature, to measure the depth of LLRB tree.
 // TODO: validate should return relevant statistics.
@@ -97,6 +97,12 @@ where
     /// Return number of entries in this instance.
     pub fn count(&self) -> usize {
         self.n_count
+    }
+
+    /// Return quickly with basic statisics, only entries() method is valid
+    /// with this statisics.
+    pub fn stats(&self) -> Stats {
+        Stats::new(self.n_count)
     }
 }
 
@@ -250,20 +256,27 @@ where
     /// * From root to any leaf, no consecutive reds allowed in its path.
     /// * Number of blacks should be same on under left child and right child.
     /// * Make sure that keys are in sorted order.
-    pub fn validate(&self) -> Result<(), LlrbError<K>> {
+    ///
+    /// Additionally return full statistics on the tree. Refer to [`Stats`]
+    /// for more information.
+    pub fn validate(&self) -> Result<Stats, LlrbError<K>> {
         let root = self.root.as_ref().map(std::ops::Deref::deref);
-        let (fromred, nblacks) = (is_red(root), 0);
-        Llrb::validate_tree(root, fromred, nblacks)?;
-        Ok(())
+        let (red, nb, d) = (is_red(root), 0, 0);
+        let mut stats = Stats::new(self.n_count);
+        stats.blacks = Llrb::validate_tree(root, red, nb, d, &mut stats)?;
+        Ok(stats)
     }
 
     fn validate_tree(
         node: Option<&Node<K, V>>,
         fromred: bool,
-        mut nblacks: u64,
-    ) -> Result<u64, LlrbError<K>> {
+        mut nb: usize,
+        depth: usize,
+        stats: &mut Stats,
+    ) -> Result<usize, LlrbError<K>> {
         if node.is_none() {
-            return Ok(nblacks);
+            stats.depths.sample(depth);
+            return Ok(nb);
         }
 
         let red = is_red(node.as_ref().map(std::ops::Deref::deref));
@@ -271,13 +284,13 @@ where
             return Err(LlrbError::ConsecutiveReds);
         }
         if !red {
-            nblacks += 1;
+            nb += 1;
         }
         let node = &node.as_ref().unwrap();
         let left = node.left_deref();
         let right = node.right_deref();
-        let lblacks = Llrb::validate_tree(left, red, nblacks)?;
-        let rblacks = Llrb::validate_tree(right, red, nblacks)?;
+        let lblacks = Llrb::validate_tree(left, red, nb, depth + 1, stats)?;
+        let rblacks = Llrb::validate_tree(right, red, nb, depth + 1, stats)?;
         if lblacks != rblacks {
             let err = format!(
                 "llrb_store: unbalanced blacks left: {} and right: {}",
@@ -321,13 +334,15 @@ where
 
         match node.key.cmp(&key) {
             Ordering::Greater => {
-                let (l, e) = Llrb::insert(node.left.take(), key, value);
-                node.left = l;
+                let left = node.left.take();
+                let (left, e) = Llrb::insert(left, key, value);
+                node.left = left;
                 (Some(Llrb::walkuprot_23(node)), e)
             }
             Ordering::Less => {
-                let (r, e) = Llrb::insert(node.right.take(), key, value);
-                node.right = r;
+                let right = node.right.take();
+                let (right, e) = Llrb::insert(right, key, value);
+                node.right = right;
                 (Some(Llrb::walkuprot_23(node)), e)
             }
             Ordering::Equal => (
@@ -337,7 +352,11 @@ where
         }
     }
 
-    fn upsert(node: Option<Box<Node<K, V>>>, key: K, value: V) -> WrType<K, V> {
+    fn upsert(
+        node: Option<Box<Node<K, V>>>,
+        key: K,
+        value: V,
+    ) -> (Option<Box<Node<K, V>>>, Option<V>) {
         if node.is_none() {
             return (Some(Node::new(key, value, false /*black*/)), None);
         }
@@ -347,13 +366,15 @@ where
 
         match node.key.cmp(&key) {
             Ordering::Greater => {
-                let (l, o) = Llrb::upsert(node.left.take(), key, value);
-                node.left = l;
+                let left = node.left.take();
+                let (left, o) = Llrb::upsert(left, key, value);
+                node.left = left;
                 (Some(Llrb::walkuprot_23(node)), o)
             }
             Ordering::Less => {
-                let (r, o) = Llrb::upsert(node.right.take(), key, value);
-                node.right = r;
+                let right = node.right.take();
+                let (right, o) = Llrb::upsert(right, key, value);
+                node.right = right;
                 (Some(Llrb::walkuprot_23(node)), o)
             }
             Ordering::Equal => {
@@ -950,5 +971,47 @@ where
     #[inline]
     fn is_black(&self) -> bool {
         self.black
+    }
+}
+
+#[derive(Default)]
+pub struct Stats {
+    entries: usize, // number of entries in the tree.
+    blacks: usize,
+    depths: Depth,
+}
+
+impl Stats {
+    fn new(entries: usize) -> Stats {
+        Stats {
+            entries,
+            blacks: 0,
+            depths: Depth::new(),
+        }
+    }
+
+    pub fn entries(&self) -> usize {
+        self.entries
+    }
+
+    pub fn blacks(&self) -> usize {
+        self.blacks
+    }
+
+    pub fn depths(&self) -> Option<Depth> {
+        if self.depths.samples() == 0 {
+            None
+        } else {
+            Some(self.depths.clone())
+        }
+    }
+}
+
+impl Display for Stats {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let d = &self.depths;
+        write!(f, "entries: {} blacks: {} ", self.entries, self.blacks).unwrap();
+        write!(f, "depth: ({},{},{}) ", d.min(), d.mean(), d.max()).unwrap();
+        write!(f, "depth-percentiles: {:?}", d.percentiles())
     }
 }
