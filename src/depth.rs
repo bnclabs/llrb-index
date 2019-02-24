@@ -1,3 +1,5 @@
+/// Depth calculates minimum, maximum, average and percentile of leaf-node
+/// depth in the LLRB tree.
 #[derive(Clone, Default)]
 pub struct Depth {
     samples: usize,
@@ -32,22 +34,29 @@ impl Depth {
         self.depths[depth as usize] += 1;
     }
 
+    /// Return the average depth of leaf-nodes in LLRB tree.
     pub fn mean(&self) -> usize {
         self.total / self.samples
     }
 
+    /// Return number of leaf-nodes sample for depth in LLRB tree.
     pub fn samples(&self) -> usize {
         self.samples
     }
 
+    /// Return minimum depth of leaf-node in LLRB tree.
     pub fn min(&self) -> usize {
         self.min
     }
 
+    /// Return maximum depth of leaf-node in LLRB tree.
     pub fn max(&self) -> usize {
         self.max
     }
 
+    /// Return depth as tuple of percentiles, each tuple provides
+    /// (percentile, depth). Percentiles are available for
+    /// 80th, 90nth, 95th, 96th, 97th, 98th, 99th.
     pub fn percentiles(&self) -> Vec<(u8, usize)> {
         let mut percentiles = [
             (0.80, 0_usize /*depth*/),

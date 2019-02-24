@@ -118,6 +118,7 @@ mod depth;
 mod error;
 mod llrb;
 
+pub use crate::depth::Depth;
 pub use crate::error::LlrbError;
 pub use crate::llrb::Llrb;
 pub use crate::llrb::Stats;

@@ -974,6 +974,7 @@ where
     }
 }
 
+/// Statistics on LLRB tree.
 #[derive(Default)]
 pub struct Stats {
     entries: usize, // number of entries in the tree.
