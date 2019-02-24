@@ -1,6 +1,5 @@
 use std::borrow::Borrow;
 use std::cmp::{Ord, Ordering};
-use std::fmt::Debug;
 use std::ops::{Bound, DerefMut};
 
 use rand::Rng;
@@ -26,7 +25,7 @@ type DelminType<K, V> = (Option<Box<Node<K, V>>>, Option<Node<K, V>>);
 /// [llrb]: https://en.wikipedia.org/wiki/Left-leaning_red-black_tree
 pub struct Llrb<K, V>
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     name: String,
@@ -36,7 +35,7 @@ where
 
 impl<K, V> Clone for Llrb<K, V>
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     fn clone(&self) -> Llrb<K, V> {
@@ -51,7 +50,7 @@ where
 /// Different ways to construct a new Llrb instance.
 impl<K, V> Llrb<K, V>
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     /// Create an empty instance of Llrb, identified by `name`.
@@ -69,7 +68,7 @@ where
 
     /// Create a new instance of Llrb tree and load it with entries
     /// from `iter`.
-    pub fn load_from<S, I>(name: S, iter: I) -> Result<Llrb<K, V>, LlrbError>
+    pub fn load_from<S, I>(name: S, iter: I) -> Result<Llrb<K, V>, LlrbError<K>>
     where
         S: AsRef<str>,
         I: Iterator<Item = (K, V)>,
@@ -86,7 +85,7 @@ where
 /// Maintenance API.
 impl<K, V> Llrb<K, V>
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     /// Identify this instance. Applications can choose unique names while
@@ -104,7 +103,7 @@ where
 /// CRUD operations on Llrb instance.
 impl<K, V> Llrb<K, V>
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     /// Get the value for key.
@@ -189,7 +188,7 @@ where
 
     /// Create a new {key, value} entry in the index. If key is already
     /// present returns error.
-    pub fn create(&mut self, key: K, value: V) -> Option<LlrbError> {
+    pub fn create(&mut self, key: K, value: V) -> Option<LlrbError<K>> {
         let root = self.root.take();
 
         let error = match Llrb::insert(root, key, value) {
@@ -251,7 +250,7 @@ where
     /// * From root to any leaf, no consecutive reds allowed in its path.
     /// * Number of blacks should be same on under left child and right child.
     /// * Make sure that keys are in sorted order.
-    pub fn validate(&self) -> Result<(), LlrbError> {
+    pub fn validate(&self) -> Result<(), LlrbError<K>> {
         let root = self.root.as_ref().map(std::ops::Deref::deref);
         let (fromred, nblacks) = (is_red(root), 0);
         Llrb::validate_tree(root, fromred, nblacks)?;
@@ -262,7 +261,7 @@ where
         node: Option<&Node<K, V>>,
         fromred: bool,
         mut nblacks: u64,
-    ) -> Result<u64, LlrbError> {
+    ) -> Result<u64, LlrbError<K>> {
         if node.is_none() {
             return Ok(nblacks);
         }
@@ -289,17 +288,15 @@ where
         if node.left.is_some() {
             let left = node.left.as_ref().unwrap();
             if left.key.ge(&node.key) {
-                let [a, b] = [&left.key, &node.key];
-                let err = format!("left key {:?} >= parent {:?}", a, b);
-                return Err(LlrbError::SortError(err));
+                let (lkey, parent) = (left.key.clone(), node.key.clone());
+                return Err(LlrbError::SortError(lkey, parent));
             }
         }
         if node.right.is_some() {
             let right = node.right.as_ref().unwrap();
             if right.key.le(&node.key) {
-                let [a, b] = [&right.key, &node.key];
-                let err = format!("right {:?} <= parent {:?}", a, b);
-                return Err(LlrbError::SortError(err));
+                let (rkey, parent) = (right.key.clone(), node.key.clone());
+                return Err(LlrbError::SortError(rkey, parent));
             }
         }
         Ok(lblacks)
@@ -308,14 +305,14 @@ where
 
 impl<K, V> Llrb<K, V>
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     fn insert(
         node: Option<Box<Node<K, V>>>,
         key: K,
         value: V,
-    ) -> (Option<Box<Node<K, V>>>, Option<LlrbError>) {
+    ) -> (Option<Box<Node<K, V>>>, Option<LlrbError<K>>) {
         if node.is_none() {
             return (Some(Node::new(key, value, false /*black*/)), None);
         }
@@ -561,7 +558,7 @@ where
 
 fn is_red<K, V>(node: Option<&Node<K, V>>) -> bool
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     match node {
@@ -572,7 +569,7 @@ where
 
 fn is_black<K, V>(node: Option<&Node<K, V>>) -> bool
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     match node {
@@ -583,7 +580,7 @@ where
 
 pub struct Iter<'a, K, V>
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     root: Option<&'a Node<K, V>>,
@@ -595,7 +592,7 @@ where
 
 impl<'a, K, V> Iter<'a, K, V>
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     fn scan_iter(
@@ -634,7 +631,7 @@ where
 
 impl<'a, K, V> Iterator for Iter<'a, K, V>
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     type Item = (K, V);
@@ -665,7 +662,7 @@ where
 
 pub struct Range<'a, K, V>
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     root: Option<&'a Node<K, V>>,
@@ -678,7 +675,7 @@ where
 
 impl<'a, K, V> Range<'a, K, V>
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     pub fn rev(self) -> Reverse<'a, K, V> {
@@ -729,7 +726,7 @@ where
 
 impl<'a, K, V> Iterator for Range<'a, K, V>
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     type Item = (K, V);
@@ -773,7 +770,7 @@ where
 
 pub struct Reverse<'a, K, V>
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     root: Option<&'a Node<K, V>>,
@@ -786,7 +783,7 @@ where
 
 impl<'a, K, V> Reverse<'a, K, V>
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     fn reverse_iter(
@@ -826,7 +823,7 @@ where
 
 impl<'a, K, V> Iterator for Reverse<'a, K, V>
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     type Item = (K, V);
@@ -874,7 +871,7 @@ where
 #[derive(Clone)]
 pub struct Node<K, V>
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     key: K,
@@ -887,7 +884,7 @@ where
 // Primary operations on a single node.
 impl<K, V> Node<K, V>
 where
-    K: Debug + Clone + Ord,
+    K: Clone + Ord,
     V: Clone,
 {
     // CREATE operation
