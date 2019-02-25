@@ -46,7 +46,7 @@ fn test_create() {
     refns.create(7, 10);
 
     assert_eq!(llrb.count(), 10);
-    assert_eq!(llrb.validate(), Ok(()));
+    assert!(llrb.validate().is_ok());
 
     // error case
     assert_eq!(llrb.create(7, 20), Some(LlrbError::OverwriteKey));
@@ -119,7 +119,7 @@ fn test_set() {
     refns.set(7, 10);
 
     assert_eq!(llrb.count(), 10);
-    assert_eq!(llrb.validate(), Ok(()));
+    assert!(llrb.validate().is_ok());
 
     // test get
     for i in 0..10 {
@@ -172,7 +172,7 @@ fn test_delete() {
     assert!(refns.delete(10).is_none());
 
     assert_eq!(llrb.count(), 10);
-    assert_eq!(llrb.validate(), Ok(()));
+    assert!(llrb.validate().is_ok());
 
     // test iter
     {
@@ -196,7 +196,7 @@ fn test_delete() {
         assert_eq!(val, refval);
     }
     assert_eq!(llrb.count(), 0);
-    assert_eq!(llrb.validate(), Ok(()));
+    assert!(llrb.validate().is_ok());
     // test iter
     assert!(llrb.iter().next().is_none());
 }
@@ -241,7 +241,7 @@ fn test_crud() {
             op => panic!("unreachable {}", op),
         };
 
-        assert_eq!(llrb.validate(), Ok(()));
+        assert!(llrb.validate().is_ok());
     }
 
     println!("count {}", llrb.count());
