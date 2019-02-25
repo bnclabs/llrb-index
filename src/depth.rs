@@ -1,6 +1,6 @@
 /// Depth calculates minimum, maximum, average and percentile of leaf-node
 /// depth in the LLRB tree.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct Depth {
     samples: usize,
     min: usize,
@@ -34,11 +34,6 @@ impl Depth {
         self.depths[depth as usize] += 1;
     }
 
-    /// Return the average depth of leaf-nodes in LLRB tree.
-    pub fn mean(&self) -> usize {
-        self.total / self.samples
-    }
-
     /// Return number of leaf-nodes sample for depth in LLRB tree.
     pub fn samples(&self) -> usize {
         self.samples
@@ -49,6 +44,11 @@ impl Depth {
         self.min
     }
 
+    /// Return the average depth of leaf-nodes in LLRB tree.
+    pub fn mean(&self) -> usize {
+        self.total / self.samples
+    }
+
     /// Return maximum depth of leaf-node in LLRB tree.
     pub fn max(&self) -> usize {
         self.max
@@ -56,7 +56,7 @@ impl Depth {
 
     /// Return depth as tuple of percentiles, each tuple provides
     /// (percentile, depth). Percentiles are available for
-    /// 80th, 90nth, 95th, 96th, 97th, 98th, 99th.
+    /// 80th, 90th, 95th, 96th, 97th, 98th, 99th.
     pub fn percentiles(&self) -> Vec<(u8, usize)> {
         let mut percentiles = [
             (0.80, 0_usize /*depth*/),
@@ -84,5 +84,32 @@ impl Depth {
             .iter()
             .map(|item| (((item.0 * 100.0) as u8), item.1))
             .collect()
+    }
+
+    pub fn pretty_print(&self, prefix: &str) {
+        let mean = self.mean();
+        println!(
+            "{}depth (min, max, avg): {:?}",
+            prefix,
+            (self.min, mean, self.max)
+        );
+        for (depth, n) in self.percentiles().into_iter() {
+            println!("{}  {} percentile = {}", prefix, depth, n);
+        }
+    }
+
+    pub fn json(&self) -> String {
+        let ps: Vec<String> = self
+            .percentiles()
+            .into_iter()
+            .map(|(d, n)| format!("{}: {}", d, n))
+            .collect();
+        let strs = [
+            format!("min: {}", self.min),
+            format!("mean: {}", self.mean()),
+            format!("max: {}", self.max),
+            format!("percentiles: {}", ps.join(", ")),
+        ];
+        ("{ ".to_string() + strs.join(", ").as_str() + " }").to_string()
     }
 }

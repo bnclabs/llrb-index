@@ -1,6 +1,5 @@
 use std::borrow::Borrow;
 use std::cmp::{Ord, Ordering};
-use std::fmt::{self, Display};
 use std::ops::{Bound, DerefMut};
 
 use rand::Rng;
@@ -11,13 +10,14 @@ use crate::error::LlrbError;
 // TODO: Sizing.
 // TODO: optimize comparison
 // TODO: llrb_depth_histogram, as feature, to measure the depth of LLRB tree.
-// TODO: validate should return relevant statistics.
 
 /// tuple of replaced node, and old value.
 type WrType<K, V> = (Option<Box<Node<K, V>>>, Option<V>);
 
 /// tuple of replaced node, and deleted node.
 type DelminType<K, V> = (Option<Box<Node<K, V>>>, Option<Node<K, V>>);
+
+const ITER_LIMIT: usize = 100;
 
 /// Llrb manage a single instance of in-memory index using
 /// [left-leaning-red-black][llrb] tree.
@@ -175,7 +175,7 @@ where
             root: self.root.as_ref().map(std::ops::Deref::deref),
             node_iter: vec![].into_iter(),
             after_key: Bound::Unbounded,
-            limit: 100,
+            limit: ITER_LIMIT,
             fin: false,
         }
     }
@@ -187,7 +187,7 @@ where
             node_iter: vec![].into_iter(),
             low,
             high,
-            limit: 100, // TODO: no magic number.
+            limit: ITER_LIMIT,
             fin: false,
         }
     }
@@ -975,7 +975,7 @@ where
 }
 
 /// Statistics on LLRB tree.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Stats {
     entries: usize, // number of entries in the tree.
     blacks: usize,
@@ -1005,14 +1005,5 @@ impl Stats {
         } else {
             Some(self.depths.clone())
         }
-    }
-}
-
-impl Display for Stats {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let d = &self.depths;
-        write!(f, "entries: {} blacks: {} ", self.entries, self.blacks).unwrap();
-        write!(f, "depth: ({},{},{}) ", d.min(), d.mean(), d.max()).unwrap();
-        write!(f, "depth-percentiles: {:?}", d.percentiles())
     }
 }
