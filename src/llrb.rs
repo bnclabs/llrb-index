@@ -11,12 +11,6 @@ use crate::error::LlrbError;
 // TODO: optimize comparison
 // TODO: llrb_depth_histogram, as feature, to measure the depth of LLRB tree.
 
-/// tuple of replaced node, and old value.
-type WrType<K, V> = (Option<Box<Node<K, V>>>, Option<V>);
-
-/// tuple of replaced node, and deleted node.
-type DelminType<K, V> = (Option<Box<Node<K, V>>>, Option<Node<K, V>>);
-
 const ITER_LIMIT: usize = 100;
 
 /// Llrb manage a single instance of in-memory index using
@@ -67,7 +61,8 @@ where
     }
 
     /// Create a new instance of Llrb tree and load it with entries
-    /// from `iter`.
+    /// from `iter`. Note that iterator should return (key, value) tuples,
+    /// where key must be ``unique``.
     pub fn load_from<S, I>(name: S, iter: I) -> Result<Llrb<K, V>, LlrbError<K>>
     where
         S: AsRef<str>,
@@ -385,7 +380,7 @@ where
         }
     }
 
-    fn do_delete<Q>(node: Option<Box<Node<K, V>>>, key: &Q) -> WrType<K, V>
+    fn do_delete<Q>(node: Option<Box<Node<K, V>>>, key: &Q) -> (Option<Box<Node<K, V>>>, Option<V>)
     where
         K: Borrow<Q>,
         Q: Ord + ?Sized,
@@ -442,7 +437,7 @@ where
         }
     }
 
-    fn delete_min(node: Option<Box<Node<K, V>>>) -> DelminType<K, V> {
+    fn delete_min(node: Option<Box<Node<K, V>>>) -> (Option<Box<Node<K, V>>>, Option<Node<K, V>>) {
         if node.is_none() {
             return (None, None);
         }

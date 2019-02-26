@@ -55,35 +55,20 @@ impl Depth {
     }
 
     /// Return depth as tuple of percentiles, each tuple provides
-    /// (percentile, depth). Percentiles are available for
-    /// 80th, 90th, 95th, 96th, 97th, 98th, 99th.
+    /// (percentile, depth).
     pub fn percentiles(&self) -> Vec<(u8, usize)> {
-        let mut percentiles = [
-            (0.80, 0_usize /*depth*/),
-            (0.90, 0_usize /*depth*/),
-            (0.95, 0_usize /*depth*/),
-            (0.96, 0_usize /*depth*/),
-            (0.97, 0_usize /*depth*/),
-            (0.98, 0_usize /*depth*/),
-            (0.99, 0_usize /*depth*/),
-        ];
-        let mut iter = percentiles.iter_mut();
-        let mut item: &mut (f64, usize) = iter.next().unwrap();
-        let mut acc = 0_f64;
-        for (depth, count) in self.depths.iter().enumerate() {
-            acc += *count as f64;
-            if acc > ((self.samples as f64) * item.0) {
-                item.1 = depth;
-                match iter.next() {
-                    Some(x) => item = x,
-                    None => break,
-                }
+        let mut percentiles: Vec<(u8, usize)> = vec![];
+        let (mut acc, mut prev_perc) = (0_f64, 89_u8);
+        let iter = self.depths.iter().enumerate().filter(|(_, &item)| item > 0);
+        for (depth, samples) in iter {
+            acc += *samples as f64;
+            let perc = ((acc / (self.samples as f64)) * 100_f64) as u8;
+            if perc > prev_perc {
+                percentiles.push((perc, depth));
+                prev_perc = perc;
             }
         }
         percentiles
-            .iter()
-            .map(|item| (((item.0 * 100.0) as u8), item.1))
-            .collect()
     }
 
     pub fn pretty_print(&self, prefix: &str) {
@@ -94,7 +79,9 @@ impl Depth {
             (self.min, mean, self.max)
         );
         for (depth, n) in self.percentiles().into_iter() {
-            println!("{}  {} percentile = {}", prefix, depth, n);
+            if n > 0 {
+                println!("{}  {} percentile = {}", prefix, depth, n);
+            }
         }
     }
 
