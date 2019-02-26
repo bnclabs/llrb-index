@@ -38,7 +38,7 @@
 //! llrb.create("key2".to_string(), "value2".to_string());
 //! llrb.set("key2".to_string(), "value3".to_string());
 //!
-//! let n = llrb.count();
+//! let n = llrb.len();
 //! assert_eq!(n, 2);
 //!
 //! let value = llrb.get("key1").unwrap();

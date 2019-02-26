@@ -14,9 +14,9 @@ fn test_id() {
 }
 
 #[test]
-fn test_count() {
+fn test_len() {
     let llrb: Llrb<i64, i64> = Llrb::new("test-llrb");
-    assert_eq!(llrb.count(), 0);
+    assert_eq!(llrb.len(), 0);
 }
 
 #[test]
@@ -45,7 +45,7 @@ fn test_create() {
     assert!(llrb.create(7, 10).is_none());
     refns.create(7, 10);
 
-    assert_eq!(llrb.count(), 10);
+    assert_eq!(llrb.len(), 10);
     assert!(llrb.validate().is_ok());
 
     // error case
@@ -118,7 +118,7 @@ fn test_set() {
     assert!(llrb.set(7, 10).is_none());
     refns.set(7, 10);
 
-    assert_eq!(llrb.count(), 10);
+    assert_eq!(llrb.len(), 10);
     assert!(llrb.validate().is_ok());
 
     // test get
@@ -171,7 +171,7 @@ fn test_delete() {
     assert!(llrb.delete(&10).is_none());
     assert!(refns.delete(10).is_none());
 
-    assert_eq!(llrb.count(), 10);
+    assert_eq!(llrb.len(), 10);
     assert!(llrb.validate().is_ok());
 
     // test iter
@@ -195,7 +195,7 @@ fn test_delete() {
         let refval = refns.delete(i);
         assert_eq!(val, refval);
     }
-    assert_eq!(llrb.count(), 0);
+    assert_eq!(llrb.len(), 0);
     assert!(llrb.validate().is_ok());
     // test iter
     assert!(llrb.iter().next().is_none());
@@ -244,7 +244,7 @@ fn test_crud() {
         assert!(llrb.validate().is_ok());
     }
 
-    println!("count {}", llrb.count());
+    println!("index-length {}", llrb.len());
 
     // test iter
     let (mut iter, mut iter_ref) = (llrb.iter(), refns.iter());
