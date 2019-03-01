@@ -18,7 +18,7 @@ impl Depth {
             total: 0,
             depths: Vec::with_capacity(256),
         };
-        depth.depths.resize(100, 0);
+        depth.depths.resize(256, 0);
         depth
     }
 

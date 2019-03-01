@@ -20,6 +20,17 @@ fn test_len() {
 }
 
 #[test]
+fn test_stats() {
+    let llrb: Llrb<i64, i64> = Llrb::new("test-llrb");
+    let stats = llrb.stats();
+    assert_eq!(stats.node_size(), 40);
+
+    let llrb: Llrb<Vec<u8>, Vec<u8>> = Llrb::new("test-llrb");
+    let stats = llrb.stats();
+    assert_eq!(stats.node_size(), 72);
+}
+
+#[test]
 fn test_create() {
     let mut llrb: Llrb<i64, i64> = Llrb::new("test-llrb");
     let mut refns = RefNodes::new(10);

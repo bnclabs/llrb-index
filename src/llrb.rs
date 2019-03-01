@@ -97,7 +97,8 @@ where
     /// Return quickly with basic statisics, only entries() method is valid
     /// with this statisics.
     pub fn stats(&self) -> Stats {
-        Stats::new(self.n_count)
+        let node_size = std::mem::size_of::<Node<K, V>>();
+        Stats::new(self.n_count, node_size)
     }
 }
 
@@ -257,7 +258,9 @@ where
     pub fn validate(&self) -> Result<Stats, LlrbError<K>> {
         let root = self.root.as_ref().map(std::ops::Deref::deref);
         let (red, nb, d) = (is_red(root), 0, 0);
-        let mut stats = Stats::new(self.n_count);
+        let node_size = std::mem::size_of::<Node<K, V>>();
+        let mut stats = Stats::new(self.n_count, node_size);
+
         stats.blacks = Llrb::validate_tree(root, red, nb, d, &mut stats)?;
         Ok(stats)
     }
@@ -975,14 +978,16 @@ pub struct Stats {
     entries: usize, // number of entries in the tree.
     blacks: usize,
     depths: Depth,
+    node_size: usize,
 }
 
 impl Stats {
-    fn new(entries: usize) -> Stats {
+    fn new(entries: usize, node_size: usize) -> Stats {
         Stats {
             entries,
             blacks: 0,
             depths: Depth::new(),
+            node_size: node_size,
         }
     }
 
@@ -992,6 +997,10 @@ impl Stats {
 
     pub fn blacks(&self) -> usize {
         self.blacks
+    }
+
+    pub fn node_size(&self) -> usize {
+        self.node_size
     }
 
     pub fn depths(&self) -> Option<Depth> {
