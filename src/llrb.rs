@@ -271,7 +271,9 @@ where
         let node_size = std::mem::size_of::<Node<K, V>>();
         let mut stats = Stats::new(self.n_count, node_size);
 
-        stats.blacks = Llrb::validate_tree(root, red, nb, d, &mut stats)?;
+        stats.set_depths(Depth::new());
+        let blacks = Llrb::validate_tree(root, red, nb, d, &mut stats)?;
+        stats.set_blacks(blacks);
         Ok(stats)
     }
 
@@ -283,7 +285,7 @@ where
         stats: &mut Stats,
     ) -> Result<usize, LlrbError<K>> {
         if node.is_none() {
-            stats.depths.sample(depth);
+            stats.depths.as_mut().unwrap().sample(depth);
             return Ok(nb);
         }
 
@@ -982,38 +984,46 @@ where
 #[derive(Default, Debug)]
 pub struct Stats {
     entries: usize, // number of entries in the tree.
-    blacks: usize,
-    depths: Depth,
     node_size: usize,
+    blacks: Option<usize>,
+    depths: Option<Depth>,
 }
 
 impl Stats {
     fn new(entries: usize, node_size: usize) -> Stats {
         Stats {
             entries,
-            blacks: 0,
-            depths: Depth::new(),
+            blacks: None,
+            depths: None,
             node_size,
         }
+    }
+
+    fn set_blacks(&mut self, blacks: usize) {
+        self.blacks = Some(blacks)
+    }
+
+    fn set_depths(&mut self, depths: Depth) {
+        self.depths = Some(depths)
     }
 
     pub fn entries(&self) -> usize {
         self.entries
     }
 
-    pub fn blacks(&self) -> usize {
-        self.blacks
-    }
-
     pub fn node_size(&self) -> usize {
         self.node_size
     }
 
+    pub fn blacks(&self) -> Option<usize> {
+        self.blacks
+    }
+
     pub fn depths(&self) -> Option<Depth> {
-        if self.depths.samples() == 0 {
+        if self.depths.as_ref().unwrap().samples() == 0 {
             None
         } else {
-            Some(self.depths.clone())
+            self.depths.clone()
         }
     }
 }
