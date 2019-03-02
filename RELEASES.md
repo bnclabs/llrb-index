@@ -6,8 +6,12 @@ HEAD
 0.2.0
 =====
 
-* Implement create() API.
-* Implement random() API.
+* Implement create() method on Llrb.
+* Implement random() method on Llrb.
+* Rename count() API to len() method on Llrb.
+* Stats type and new stats() method on Llrb.
+* validate() method should return Stats type.
+* Tree depth statistics, in min, mean, max, percentiles.
 
 0.1.0
 =====
