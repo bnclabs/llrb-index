@@ -7,10 +7,6 @@ use rand::Rng;
 use crate::depth::Depth;
 use crate::error::LlrbError;
 
-// TODO: Sizing.
-// TODO: optimize comparison
-// TODO: llrb_depth_histogram, as feature, to measure the depth of LLRB tree.
-
 const ITER_LIMIT: usize = 100;
 
 type Delmin<K, V> = (Option<Box<Node<K, V>>>, Option<Node<K, V>>);
@@ -180,9 +176,8 @@ where
         Iter {
             root: self.root.as_ref().map(std::ops::Deref::deref),
             node_iter: vec![].into_iter(),
-            after_key: Bound::Unbounded,
+            after_key: Some(Bound::Unbounded),
             limit: ITER_LIMIT,
-            fin: false,
         }
     }
 
@@ -191,10 +186,9 @@ where
         Range {
             root: self.root.as_ref().map(std::ops::Deref::deref),
             node_iter: vec![].into_iter(),
-            low,
+            low: Some(low),
             high,
             limit: ITER_LIMIT,
-            fin: false,
         }
     }
 
@@ -612,9 +606,8 @@ where
 {
     root: Option<&'a Node<K, V>>,
     node_iter: std::vec::IntoIter<(K, V)>,
-    after_key: Bound<K>,
+    after_key: Option<Bound<K>>,
     limit: usize,
-    fin: bool,
 }
 
 impl<'a, K, V> Iter<'a, K, V>
@@ -632,15 +625,15 @@ where
         }
         let node = node.unwrap();
 
-        let left = node.left_deref();
-        let right = node.right_deref();
+        let (left, right) = (node.left_deref(), node.right_deref());
         match &self.after_key {
-            Bound::Included(akey) | Bound::Excluded(akey) => {
+            None => return false,
+            Some(Bound::Included(akey)) | Some(Bound::Excluded(akey)) => {
                 if node.key.borrow().le(akey) {
                     return self.scan_iter(right, acc);
                 }
             }
-            Bound::Unbounded => (),
+            Some(Bound::Unbounded) => (),
         }
 
         if !self.scan_iter(left, acc) {
@@ -664,25 +657,15 @@ where
     type Item = (K, V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.fin {
-            return None;
-        }
-
-        let item = self.node_iter.next();
-        if item.is_some() {
-            return item;
-        }
-
-        let mut acc: Vec<(K, V)> = Vec::with_capacity(self.limit);
-        self.scan_iter(self.root, &mut acc);
-
-        if acc.is_empty() {
-            self.fin = true;
-            None
-        } else {
-            self.after_key = Bound::Excluded(acc.last().unwrap().0.clone());
-            self.node_iter = acc.into_iter();
-            self.node_iter.next()
+        match self.node_iter.next() {
+            None => {
+                let mut acc: Vec<(K, V)> = Vec::with_capacity(self.limit);
+                self.scan_iter(self.root, &mut acc);
+                self.after_key = acc.last().map(|x| Bound::Excluded(x.0.clone()));
+                self.node_iter = acc.into_iter();
+                self.node_iter.next()
+            }
+            item @ Some(_) => item,
         }
     }
 }
@@ -694,10 +677,9 @@ where
 {
     root: Option<&'a Node<K, V>>,
     node_iter: std::vec::IntoIter<(K, V)>,
-    low: Bound<K>,
+    low: Option<Bound<K>>,
     high: Bound<K>,
     limit: usize,
-    fin: bool,
 }
 
 impl<'a, K, V> Range<'a, K, V>
@@ -709,10 +691,9 @@ where
         Reverse {
             root: self.root,
             node_iter: vec![].into_iter(),
-            low: self.low,
-            high: self.high,
+            low: self.low.unwrap(),
+            high: Some(self.high),
             limit: self.limit,
-            fin: false,
         }
     }
 
@@ -726,13 +707,12 @@ where
         }
         let node = node.unwrap();
 
-        let left = node.left_deref();
-        let right = node.right_deref();
+        let (left, right) = (node.left_deref(), node.right_deref());
         match &self.low {
-            Bound::Included(qow) if node.key.lt(qow) => {
+            Some(Bound::Included(qow)) if node.key.lt(qow) => {
                 return self.range_iter(right, acc);
             }
-            Bound::Excluded(qow) if node.key.le(qow) => {
+            Some(Bound::Excluded(qow)) if node.key.le(qow) => {
                 return self.range_iter(right, acc);
             }
             _ => (),
@@ -759,38 +739,29 @@ where
     type Item = (K, V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.fin {
-            return None;
-        }
-
-        let mut item = self.node_iter.next();
-        if item.is_none() {
-            let mut acc: Vec<(K, V)> = Vec::with_capacity(self.limit);
-            self.range_iter(self.root, &mut acc);
-            item = if !acc.is_empty() {
-                self.low = Bound::Excluded(acc.last().unwrap().0.clone());
+        let item = match self.node_iter.next() {
+            None if self.low.is_some() => {
+                let mut acc: Vec<(K, V)> = Vec::with_capacity(self.limit);
+                self.range_iter(self.root, &mut acc);
+                self.low = acc.last().map(|x| Bound::Excluded(x.0.clone()));
                 self.node_iter = acc.into_iter();
                 self.node_iter.next()
-            } else {
-                None
-            };
-        }
-
-        if item.is_none() {
-            self.fin = true;
-            return None;
-        }
-
-        // handle upper limit
-        let item = item.unwrap();
-        match &self.high {
-            Bound::Unbounded => Some(item),
-            Bound::Included(qigh) if item.0.le(qigh) => Some(item),
-            Bound::Excluded(qigh) if item.0.lt(qigh) => Some(item),
-            _ => {
-                self.fin = true;
-                None
             }
+            None => None,
+            item @ Some(_) => item,
+        };
+        // check for lower bound
+        match item {
+            None => None,
+            Some(item) => match &self.high {
+                Bound::Unbounded => Some(item),
+                Bound::Included(qigh) if item.0.le(qigh) => Some(item),
+                Bound::Excluded(qigh) if item.0.lt(qigh) => Some(item),
+                _ => {
+                    self.low = None;
+                    None
+                }
+            },
         }
     }
 }
@@ -802,10 +773,9 @@ where
 {
     root: Option<&'a Node<K, V>>,
     node_iter: std::vec::IntoIter<(K, V)>,
-    high: Bound<K>,
+    high: Option<Bound<K>>,
     low: Bound<K>,
     limit: usize,
-    fin: bool,
 }
 
 impl<'a, K, V> Reverse<'a, K, V>
@@ -823,13 +793,12 @@ where
         }
         let node = node.unwrap();
 
-        let left = node.left_deref();
-        let right = node.right_deref();
+        let (left, right) = (node.left_deref(), node.right_deref());
         match &self.high {
-            Bound::Included(qigh) if node.key.gt(qigh) => {
+            Some(Bound::Included(qigh)) if node.key.gt(qigh) => {
                 return self.reverse_iter(left, acc);
             }
-            Bound::Excluded(qigh) if node.key.ge(qigh) => {
+            Some(Bound::Excluded(qigh)) if node.key.ge(qigh) => {
                 return self.reverse_iter(left, acc);
             }
             _ => (),
@@ -856,40 +825,29 @@ where
     type Item = (K, V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        //println!("yyy");
-        if self.fin {
-            return None;
-        }
-
-        let mut item = self.node_iter.next();
-        if item.is_none() {
-            let mut acc: Vec<(K, V)> = Vec::with_capacity(self.limit);
-            self.reverse_iter(self.root, &mut acc);
-            item = if !acc.is_empty() {
-                self.high = Bound::Excluded(acc.last().unwrap().0.clone());
+        let item = match self.node_iter.next() {
+            None if self.high.is_some() => {
+                let mut acc: Vec<(K, V)> = Vec::with_capacity(self.limit);
+                self.reverse_iter(self.root, &mut acc);
+                self.high = acc.last().map(|x| Bound::Excluded(x.0.clone()));
                 self.node_iter = acc.into_iter();
                 self.node_iter.next()
-            } else {
-                None
             }
-        }
-
-        if item.is_none() {
-            self.fin = true;
-            return None;
-        }
-
-        // handle lower limit
-        let item = item.unwrap();
-        match &self.low {
-            Bound::Unbounded => Some(item),
-            Bound::Included(qow) if item.0.ge(qow) => Some(item),
-            Bound::Excluded(qow) if item.0.gt(qow) => Some(item),
-            _ => {
-                //println!("llrb reverse over {:?}", &self.low);
-                self.fin = true;
-                None
-            }
+            None => None,
+            item @ Some(_) => item,
+        };
+        // check for lower bound
+        match item {
+            None => None,
+            Some(item) => match &self.low {
+                Bound::Unbounded => Some(item),
+                Bound::Included(qow) if item.0.ge(qow) => Some(item),
+                Bound::Excluded(qow) if item.0.gt(qow) => Some(item),
+                _ => {
+                    self.high = None;
+                    None
+                }
+            },
         }
     }
 }

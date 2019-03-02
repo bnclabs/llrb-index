@@ -83,27 +83,6 @@ fn test_create() {
 }
 
 #[test]
-fn test_random() {
-    let mut llrb: Llrb<i64, i64> = Llrb::new("test-llrb");
-    let mut rng = SmallRng::from_seed(make_seed().to_le_bytes());
-
-    assert_eq!(llrb.random(&mut rng), None);
-
-    assert!(llrb.create(0, 0).is_none());
-    assert_eq!(llrb.random(&mut rng), Some((0, 0)));
-    assert_eq!(llrb.random(&mut rng), Some((0, 0)));
-
-    for key in 1..1_000_000 {
-        assert!(llrb.set(key, key * 10).is_none());
-    }
-    for _i in 0..2_000_000 {
-        let (key, value) = llrb.random(&mut rng).unwrap();
-        assert!(key >= 0 && key < 1_000_000);
-        assert_eq!(value, key * 10);
-    }
-}
-
-#[test]
 fn test_set() {
     let mut llrb: Llrb<i64, i64> = Llrb::new("test-llrb");
     let mut refns = RefNodes::new(10);
@@ -213,6 +192,139 @@ fn test_delete() {
 }
 
 #[test]
+fn test_random() {
+    let mut llrb: Llrb<i64, i64> = Llrb::new("test-llrb");
+    let mut rng = SmallRng::from_seed(make_seed().to_le_bytes());
+
+    assert_eq!(llrb.random(&mut rng), None);
+
+    assert!(llrb.create(0, 0).is_none());
+    assert_eq!(llrb.random(&mut rng), Some((0, 0)));
+    assert_eq!(llrb.random(&mut rng), Some((0, 0)));
+
+    for key in 1..1_000_000 {
+        assert!(llrb.set(key, key * 10).is_none());
+    }
+    for _i in 0..2_000_000 {
+        let (key, value) = llrb.random(&mut rng).unwrap();
+        assert!(key >= 0 && key < 1_000_000);
+        assert_eq!(value, key * 10);
+    }
+}
+
+#[test]
+fn test_iter() {
+    let mut llrb: Llrb<i64, i64> = Llrb::new("test-llrb");
+    let mut refns = RefNodes::new(10);
+
+    assert!(llrb.create(2, 10).is_none());
+    refns.create(2, 10);
+    assert!(llrb.create(1, 10).is_none());
+    refns.create(1, 10);
+    assert!(llrb.create(3, 10).is_none());
+    refns.create(3, 10);
+    assert!(llrb.create(6, 10).is_none());
+    refns.create(6, 10);
+    assert!(llrb.create(5, 10).is_none());
+    refns.create(5, 10);
+    assert!(llrb.create(4, 10).is_none());
+    refns.create(4, 10);
+    assert!(llrb.create(8, 10).is_none());
+    refns.create(8, 10);
+    assert!(llrb.create(0, 10).is_none());
+    refns.create(0, 10);
+    assert!(llrb.create(9, 10).is_none());
+    refns.create(9, 10);
+    assert!(llrb.create(7, 10).is_none());
+    refns.create(7, 10);
+
+    assert_eq!(llrb.len(), 10);
+    assert!(llrb.validate().is_ok());
+
+    // test iter
+    let (mut iter, mut iter_ref) = (llrb.iter(), refns.iter());
+    loop {
+        match (iter.next(), iter_ref.next()) {
+            (Some(item), Some(ref_item)) => {
+                assert_eq!(item.0, ref_item.0);
+                assert_eq!(item.1, ref_item.1);
+            }
+            (None, None) => break,
+            (_, _) => panic!("invalid"),
+        }
+    }
+    assert_eq!(iter.next(), None);
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
+fn test_range() {
+    let mut llrb: Llrb<i64, i64> = Llrb::new("test-llrb");
+    let mut refns = RefNodes::new(10);
+
+    assert!(llrb.create(2, 10).is_none());
+    refns.create(2, 10);
+    assert!(llrb.create(1, 10).is_none());
+    refns.create(1, 10);
+    assert!(llrb.create(3, 10).is_none());
+    refns.create(3, 10);
+    assert!(llrb.create(6, 10).is_none());
+    refns.create(6, 10);
+    assert!(llrb.create(5, 10).is_none());
+    refns.create(5, 10);
+    assert!(llrb.create(4, 10).is_none());
+    refns.create(4, 10);
+    assert!(llrb.create(8, 10).is_none());
+    refns.create(8, 10);
+    assert!(llrb.create(0, 10).is_none());
+    refns.create(0, 10);
+    assert!(llrb.create(9, 10).is_none());
+    refns.create(9, 10);
+    assert!(llrb.create(7, 10).is_none());
+    refns.create(7, 10);
+
+    assert_eq!(llrb.len(), 10);
+    assert!(llrb.validate().is_ok());
+
+    // test range
+    for _ in 0..1_000 {
+        let (low, high) = random_low_high(llrb.len());
+
+        let mut iter = llrb.range(low, high);
+        let mut iter_ref = refns.range(low, high);
+        loop {
+            match (iter.next(), iter_ref.next()) {
+                (Some(item), Some(ref_item)) => {
+                    //println!("{:?} {:?}", ref_item, item);
+                    assert_eq!(item.0, ref_item.0);
+                    assert_eq!(item.1, ref_item.1);
+                }
+                (None, None) => break,
+                (Some(item), None) => panic!("invalid item: {:?}", item),
+                (None, Some(ref_item)) => panic!("invalid none: {:?}", ref_item),
+            }
+        }
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), None);
+
+        let mut iter = llrb.range(low, high).rev();
+        let mut iter_ref = refns.reverse(low, high);
+        loop {
+            match (iter.next(), iter_ref.next()) {
+                (Some(item), Some(ref_item)) => {
+                    assert_eq!(item.0, ref_item.0);
+                    assert_eq!(item.1, ref_item.1);
+                }
+                (None, None) => break,
+                (_, _) => panic!("invalid"),
+            }
+        }
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), None);
+    }
+}
+
+#[test]
 fn test_crud() {
     let size = 1000;
     let mut llrb: Llrb<i64, i64> = Llrb::new("test-llrb");
@@ -271,7 +383,7 @@ fn test_crud() {
     }
 
     // ranges and reverses
-    for _ in 0..1_0000 {
+    for _ in 0..10_000 {
         let (low, high) = random_low_high(size);
         //println!("test loop {:?} {:?}", low, high);
 
