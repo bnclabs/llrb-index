@@ -253,6 +253,7 @@ where
     }
 
     /// Validate LLRB tree with following rules:
+    ///
     /// * From root to any leaf, no consecutive reds allowed in its path.
     /// * Number of blacks should be same on under left child and right child.
     /// * Make sure that keys are in sorted order.
@@ -291,8 +292,7 @@ where
             nb += 1;
         }
         let node = &node.as_ref().unwrap();
-        let left = node.left_deref();
-        let right = node.right_deref();
+        let (left, right) = (node.left_deref(), node.right_deref());
         let lblacks = Llrb::validate_tree(left, red, nb, depth + 1, stats)?;
         let rblacks = Llrb::validate_tree(right, red, nb, depth + 1, stats)?;
         if lblacks != rblacks {
