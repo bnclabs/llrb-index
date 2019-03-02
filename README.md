@@ -23,7 +23,7 @@ Note that this implementation of LLRB do not provide
 
 **Licensing**
 
-Default license for ``llrb-index`` is [AGPL-3.0 license]. For re-licensing
+Default license for ``llrb-index`` is [AGPL-3.0 license][agpl]. For re-licensing
 this source, you can either contact the author(s) directly or post your
 request here [#1][#1].
 
@@ -37,3 +37,5 @@ compiler and nightly builds.
 Refer to this [Wikipedia link][wikilink] for more information on LLRB algorithm.
 
 [wikilink]: https://en.wikipedia.org/wiki/Left-leaning_red%E2%80%93black_tree
+[agpl]: https://github.com/bnclabs/llrb-index/blob/master/LICENSE
+[#1]: https://github.com/bnclabs/llrb-index/issues/1
