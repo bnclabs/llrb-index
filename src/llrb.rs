@@ -13,6 +13,10 @@ use crate::error::LlrbError;
 
 const ITER_LIMIT: usize = 100;
 
+type Delmin<K, V> = (Option<Box<Node<K, V>>>, Option<Node<K, V>>);
+
+type Insert<K, V> = (Option<Box<Node<K, V>>>, Option<LlrbError<K>>);
+
 /// Llrb manage a single instance of in-memory index using
 /// [left-leaning-red-black][llrb] tree.
 ///
@@ -92,6 +96,12 @@ where
     /// Return number of entries in this instance.
     pub fn len(&self) -> usize {
         self.n_count
+    }
+
+    /// Check whether this index is empty.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.n_count == 0
     }
 
     /// Return quickly with basic statisics, only entries() method is valid
@@ -319,11 +329,7 @@ where
     K: Clone + Ord,
     V: Clone,
 {
-    fn insert(
-        node: Option<Box<Node<K, V>>>,
-        key: K,
-        value: V,
-    ) -> (Option<Box<Node<K, V>>>, Option<LlrbError<K>>) {
+    fn insert(node: Option<Box<Node<K, V>>>, key: K, value: V) -> Insert<K, V> {
         if node.is_none() {
             return (Some(Node::new(key, value, false /*black*/)), None);
         }
@@ -440,7 +446,7 @@ where
         }
     }
 
-    fn delete_min(node: Option<Box<Node<K, V>>>) -> (Option<Box<Node<K, V>>>, Option<Node<K, V>>) {
+    fn delete_min(node: Option<Box<Node<K, V>>>) -> Delmin<K, V> {
         if node.is_none() {
             return (None, None);
         }
@@ -987,7 +993,7 @@ impl Stats {
             entries,
             blacks: 0,
             depths: Depth::new(),
-            node_size: node_size,
+            node_size,
         }
     }
 
