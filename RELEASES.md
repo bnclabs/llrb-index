@@ -1,7 +1,7 @@
 HEAD
 ====
 
-- Waiting ...
+- Implement Empty type that can be used as values.
 
 0.2.0
 =====

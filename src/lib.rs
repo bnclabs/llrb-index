@@ -115,10 +115,12 @@
 //!
 //! [wiki-llrb]: https://en.wikipedia.org/wiki/Left-leaning_red-black_tree
 mod depth;
+mod empty;
 mod error;
 mod llrb;
 
 pub use crate::depth::Depth;
+pub use crate::empty::Empty;
 pub use crate::error::LlrbError;
 pub use crate::llrb::Llrb;
 pub use crate::llrb::Stats;
