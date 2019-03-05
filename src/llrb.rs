@@ -13,6 +13,8 @@ type Delmin<K, V> = (Option<Box<Node<K, V>>>, Option<Node<K, V>>);
 
 type Insert<K, V> = (Option<Box<Node<K, V>>>, Option<LlrbError<K>>);
 
+type NodeV<K, V> = (Option<Box<Node<K, V>>>, Option<V>);
+
 /// Llrb manage a single instance of in-memory index using
 /// [left-leaning-red-black][llrb] tree.
 ///
@@ -85,11 +87,13 @@ where
 {
     /// Identify this instance. Applications can choose unique names while
     /// creating Llrb instances.
+    #[inline]
     pub fn id(&self) -> String {
         self.name.clone()
     }
 
     /// Return number of entries in this instance.
+    #[inline]
     pub fn len(&self) -> usize {
         self.n_count
     }
@@ -334,14 +338,12 @@ where
 
         match node.key.cmp(&key) {
             Ordering::Greater => {
-                let left = node.left.take();
-                let (left, e) = Llrb::insert(left, key, value);
+                let (left, e) = Llrb::insert(node.left.take(), key, value);
                 node.left = left;
                 (Some(Llrb::walkuprot_23(node)), e)
             }
             Ordering::Less => {
-                let right = node.right.take();
-                let (right, e) = Llrb::insert(right, key, value);
+                let (right, e) = Llrb::insert(node.right.take(), key, value);
                 node.right = right;
                 (Some(Llrb::walkuprot_23(node)), e)
             }
@@ -352,28 +354,21 @@ where
         }
     }
 
-    fn upsert(
-        node: Option<Box<Node<K, V>>>,
-        key: K,
-        value: V,
-    ) -> (Option<Box<Node<K, V>>>, Option<V>) {
+    fn upsert(node: Option<Box<Node<K, V>>>, key: K, value: V) -> NodeV<K, V> {
         if node.is_none() {
             return (Some(Node::new(key, value, false /*black*/)), None);
         }
 
-        let mut node = node.unwrap();
-        node = Llrb::walkdown_rot23(node);
+        let mut node = Llrb::walkdown_rot23(node.unwrap());
 
         match node.key.cmp(&key) {
             Ordering::Greater => {
-                let left = node.left.take();
-                let (left, o) = Llrb::upsert(left, key, value);
+                let (left, o) = Llrb::upsert(node.left.take(), key, value);
                 node.left = left;
                 (Some(Llrb::walkuprot_23(node)), o)
             }
             Ordering::Less => {
-                let right = node.right.take();
-                let (right, o) = Llrb::upsert(right, key, value);
+                let (right, o) = Llrb::upsert(node.right.take(), key, value);
                 node.right = right;
                 (Some(Llrb::walkuprot_23(node)), o)
             }
@@ -385,7 +380,7 @@ where
         }
     }
 
-    fn do_delete<Q>(node: Option<Box<Node<K, V>>>, key: &Q) -> (Option<Box<Node<K, V>>>, Option<V>)
+    fn do_delete<Q>(node: Option<Box<Node<K, V>>>, key: &Q) -> NodeV<K, V>
     where
         K: Borrow<Q>,
         Q: Ord + ?Sized,
@@ -659,10 +654,10 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         match self.node_iter.next() {
             None => {
-                let mut acc: Vec<(K, V)> = Vec::with_capacity(self.limit);
-                self.scan_iter(self.root, &mut acc);
-                self.after_key = acc.last().map(|x| Bound::Excluded(x.0.clone()));
-                self.node_iter = acc.into_iter();
+                let mut a: Vec<(K, V)> = Vec::with_capacity(self.limit);
+                self.scan_iter(self.root, &mut a);
+                self.after_key = a.last().map(|x| Bound::Excluded(x.0.clone()));
+                self.node_iter = a.into_iter();
                 self.node_iter.next()
             }
             item @ Some(_) => item,
