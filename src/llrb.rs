@@ -577,10 +577,7 @@ where
     K: Clone + Ord,
     V: Clone,
 {
-    match node {
-        None => false,
-        node @ Some(_) => !is_black(node),
-    }
+    node.map_or(false, |node| !node.is_black())
 }
 
 fn is_black<K, V>(node: Option<&Node<K, V>>) -> bool
@@ -588,10 +585,7 @@ where
     K: Clone + Ord,
     V: Clone,
 {
-    match node {
-        None => true,
-        Some(node) => node.is_black(),
-    }
+    node.map_or(true, |node| node.is_black())
 }
 
 pub struct Iter<'a, K, V>
@@ -889,25 +883,18 @@ where
         }
     }
 
+    #[inline]
     fn left_deref(&self) -> Option<&Node<K, V>> {
         self.left.as_ref().map(std::ops::Deref::deref)
     }
 
+    #[inline]
     fn right_deref(&self) -> Option<&Node<K, V>> {
         self.right.as_ref().map(std::ops::Deref::deref)
     }
 
-    #[allow(dead_code)]
-    fn left_deref_mut(&mut self) -> Option<&mut Node<K, V>> {
-        self.left.as_mut().map(std::ops::DerefMut::deref_mut)
-    }
-
-    #[allow(dead_code)]
-    fn right_deref_mut(&mut self) -> Option<&mut Node<K, V>> {
-        self.right.as_mut().map(std::ops::DerefMut::deref_mut)
-    }
-
     // prepend operation, equivalent to SET / INSERT / UPDATE
+    #[inline]
     fn set_value(&mut self, value: V) {
         self.value = value
     }
@@ -952,22 +939,27 @@ impl Stats {
         }
     }
 
+    #[inline]
     fn set_blacks(&mut self, blacks: usize) {
         self.blacks = Some(blacks)
     }
 
+    #[inline]
     fn set_depths(&mut self, depths: Depth) {
         self.depths = Some(depths)
     }
 
+    #[inline]
     pub fn entries(&self) -> usize {
         self.entries
     }
 
+    #[inline]
     pub fn node_size(&self) -> usize {
         self.node_size
     }
 
+    #[inline]
     pub fn blacks(&self) -> Option<usize> {
         self.blacks
     }
