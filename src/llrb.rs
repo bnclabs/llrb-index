@@ -9,11 +9,13 @@ use crate::error::LlrbError;
 
 const ITER_LIMIT: usize = 100;
 
+type Insert<K, V> = (Box<Node<K, V>>, Option<LlrbError<K>>);
+
+type Upsert<K, V> = (Box<Node<K, V>>, Option<V>);
+
+type Delete<K, V> = (Option<Box<Node<K, V>>>, Option<V>);
+
 type Delmin<K, V> = (Option<Box<Node<K, V>>>, Option<Node<K, V>>);
-
-type Insert<K, V> = (Option<Box<Node<K, V>>>, Option<LlrbError<K>>);
-
-type NodeV<K, V> = (Option<Box<Node<K, V>>>, Option<V>);
 
 /// Llrb manage a single instance of in-memory index using
 /// [left-leaning-red-black][llrb] tree.
@@ -146,32 +148,21 @@ where
 
     /// Return a random entry from this index.
     pub fn random<R: Rng>(&self, rng: &mut R) -> Option<(K, V)> {
-        let mut node = self.root.as_ref().map(std::ops::Deref::deref);
+        let mut nref = self.root.as_ref().map(std::ops::Deref::deref)?;
 
-        node?;
-
-        let mut depth = 0;
-        let at_depth = rng.gen::<u8>() % 40;
+        let mut at_depth = rng.gen::<u8>() % 40;
         loop {
-            let r: u8 = rng.gen();
-            let nref = node.unwrap();
-
-            if at_depth == depth {
-                break Some((nref.key.clone(), nref.value.clone()));
-            }
-            depth += 1;
-
-            let next = if r % 2 == 0 {
+            let next = if (rng.gen::<u8>() % 2) == 0 {
                 nref.left_deref()
             } else {
                 nref.right_deref()
             };
 
-            if next.is_none() {
+            if at_depth == 0 || next.is_none() {
                 break Some((nref.key.clone(), nref.value.clone()));
-            } else {
-                node = next;
             }
+            at_depth -= 1;
+            nref = next.unwrap();
         }
     }
 
@@ -199,16 +190,9 @@ where
     /// Create a new {key, value} entry in the index. If key is already
     /// present returns error.
     pub fn create(&mut self, key: K, value: V) -> Option<LlrbError<K>> {
-        let root = self.root.take();
-
-        let error = match Llrb::insert(root, key, value) {
-            (Some(mut root), error) => {
-                root.set_black();
-                self.root = Some(root);
-                error
-            }
-            _ => unreachable!(),
-        };
+        let (mut root, error) = Llrb::insert(self.root.take(), key, value);
+        root.set_black();
+        self.root = Some(root);
         if error.is_none() {
             self.n_count += 1;
         }
@@ -218,16 +202,9 @@ where
     /// Set value for key. If there is an existing entry for key,
     /// overwrite the old value with new value and return the old value.
     pub fn set(&mut self, key: K, value: V) -> Option<V> {
-        let root = self.root.take();
-
-        let old_value = match Llrb::upsert(root, key, value) {
-            (Some(mut root), old_value) => {
-                root.set_black();
-                self.root = Some(root);
-                old_value
-            }
-            _ => unreachable!(),
-        };
+        let (mut root, old_value) = Llrb::upsert(self.root.take(), key, value);
+        root.set_black();
+        self.root = Some(root);
         if old_value.is_none() {
             self.n_count += 1;
         }
@@ -331,7 +308,7 @@ where
 {
     fn insert(node: Option<Box<Node<K, V>>>, key: K, value: V) -> Insert<K, V> {
         if node.is_none() {
-            return (Some(Node::new(key, value, false /*black*/)), None);
+            return (Node::new(key, value, false /*black*/), None);
         }
 
         let mut node = Llrb::walkdown_rot23(node.unwrap());
@@ -339,24 +316,24 @@ where
         match node.key.cmp(&key) {
             Ordering::Greater => {
                 let (left, e) = Llrb::insert(node.left.take(), key, value);
-                node.left = left;
-                (Some(Llrb::walkuprot_23(node)), e)
+                node.left = Some(left);
+                (Llrb::walkuprot_23(node), e)
             }
             Ordering::Less => {
                 let (right, e) = Llrb::insert(node.right.take(), key, value);
-                node.right = right;
-                (Some(Llrb::walkuprot_23(node)), e)
+                node.right = Some(right);
+                (Llrb::walkuprot_23(node), e)
             }
-            Ordering::Equal => (
-                Some(Llrb::walkuprot_23(node)),
-                Some(LlrbError::OverwriteKey),
-            ),
+            Ordering::Equal => {
+                let err = Some(LlrbError::OverwriteKey);
+                (Llrb::walkuprot_23(node), err)
+            }
         }
     }
 
-    fn upsert(node: Option<Box<Node<K, V>>>, key: K, value: V) -> NodeV<K, V> {
+    fn upsert(node: Option<Box<Node<K, V>>>, key: K, value: V) -> Upsert<K, V> {
         if node.is_none() {
-            return (Some(Node::new(key, value, false /*black*/)), None);
+            return (Node::new(key, value, false /*black*/), None);
         }
 
         let mut node = Llrb::walkdown_rot23(node.unwrap());
@@ -364,23 +341,23 @@ where
         match node.key.cmp(&key) {
             Ordering::Greater => {
                 let (left, o) = Llrb::upsert(node.left.take(), key, value);
-                node.left = left;
-                (Some(Llrb::walkuprot_23(node)), o)
+                node.left = Some(left);
+                (Llrb::walkuprot_23(node), o)
             }
             Ordering::Less => {
                 let (right, o) = Llrb::upsert(node.right.take(), key, value);
-                node.right = right;
-                (Some(Llrb::walkuprot_23(node)), o)
+                node.right = Some(right);
+                (Llrb::walkuprot_23(node), o)
             }
             Ordering::Equal => {
                 let old_value = node.value.clone();
                 node.set_value(value);
-                (Some(Llrb::walkuprot_23(node)), Some(old_value))
+                (Llrb::walkuprot_23(node), Some(old_value))
             }
         }
     }
 
-    fn do_delete<Q>(node: Option<Box<Node<K, V>>>, key: &Q) -> NodeV<K, V>
+    fn do_delete<Q>(node: Option<Box<Node<K, V>>>, key: &Q) -> Delete<K, V>
     where
         K: Borrow<Q>,
         Q: Ord + ?Sized,
