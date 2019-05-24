@@ -1,15 +1,18 @@
-use std::borrow::Borrow;
-use std::cmp::{Ord, Ordering};
-use std::ops::{Bound, DerefMut};
+use std::{
+    borrow::Borrow,
+    cmp::{Ord, Ordering},
+    mem,
+    ops::{Bound, Deref, DerefMut},
+};
 
 use rand::Rng;
 
 use crate::depth::Depth;
-use crate::error::LlrbError;
+use crate::error::Error;
 
 const ITER_LIMIT: usize = 100;
 
-type Insert<K, V> = (Box<Node<K, V>>, Option<LlrbError<K>>);
+type Insert<K, V> = (Box<Node<K, V>>, Option<Error<K>>);
 
 type Upsert<K, V> = (Box<Node<K, V>>, Option<V>);
 
@@ -21,6 +24,7 @@ type Delmin<K, V> = (Option<Box<Node<K, V>>>, Option<Node<K, V>>);
 /// [left-leaning-red-black][llrb] tree.
 ///
 /// [llrb]: https://en.wikipedia.org/wiki/Left-leaning_red-black_tree
+#[derive(Clone)]
 pub struct Llrb<K, V>
 where
     K: Clone + Ord,
@@ -29,20 +33,6 @@ where
     name: String,
     root: Option<Box<Node<K, V>>>,
     n_count: usize, // number of entries in the tree.
-}
-
-impl<K, V> Clone for Llrb<K, V>
-where
-    K: Clone + Ord,
-    V: Clone,
-{
-    fn clone(&self) -> Llrb<K, V> {
-        Llrb {
-            name: self.name.clone(),
-            root: self.root.clone(),
-            n_count: self.n_count,
-        }
-    }
 }
 
 /// Different ways to construct a new Llrb instance.
@@ -59,15 +49,15 @@ where
     {
         Llrb {
             name: name.as_ref().to_string(),
-            root: None,
-            n_count: 0,
+            root: Default::default(),
+            n_count: Default::default(),
         }
     }
 
     /// Create a new instance of Llrb tree and load it with entries
     /// from `iter`. Note that iterator should return (key, value) tuples,
     /// where key must be ``unique``.
-    pub fn load_from<S, I>(name: S, iter: I) -> Result<Llrb<K, V>, LlrbError<K>>
+    pub fn load_from<S, I>(name: S, iter: I) -> Result<Llrb<K, V>, Error<K>>
     where
         S: AsRef<str>,
         I: Iterator<Item = (K, V)>,
@@ -109,8 +99,7 @@ where
     /// Return quickly with basic statisics, only entries() method is valid
     /// with this statisics.
     pub fn stats(&self) -> Stats {
-        let node_size = std::mem::size_of::<Node<K, V>>();
-        Stats::new(self.n_count, node_size)
+        Stats::new(self.n_count, mem::size_of::<Node<K, V>>())
     }
 }
 
@@ -126,7 +115,7 @@ where
         K: Borrow<Q>,
         Q: Ord + ?Sized,
     {
-        let root = self.root.as_ref().map(std::ops::Deref::deref);
+        let root = self.root.as_ref().map(Deref::deref);
         self.do_get(root, key)
     }
 
@@ -135,8 +124,7 @@ where
         K: Borrow<Q>,
         Q: Ord + ?Sized,
     {
-        while node.is_some() {
-            let nref = node.unwrap();
+        while let Some(nref) = node {
             node = match nref.key.borrow().cmp(key) {
                 Ordering::Less => nref.right_deref(),
                 Ordering::Greater => nref.left_deref(),
@@ -148,16 +136,15 @@ where
 
     /// Return a random entry from this index.
     pub fn random<R: Rng>(&self, rng: &mut R) -> Option<(K, V)> {
-        let mut nref = self.root.as_ref().map(std::ops::Deref::deref)?;
+        let mut nref = self.root.as_ref().map(Deref::deref)?;
 
         let mut at_depth = rng.gen::<u8>() % 40;
         loop {
-            let next = if (rng.gen::<u8>() % 2) == 0 {
-                nref.left_deref()
-            } else {
-                nref.right_deref()
+            let next = match rng.gen::<u8>() % 2 {
+                0 => nref.left_deref(),
+                1 => nref.right_deref(),
+                _ => unreachable!(),
             };
-
             if at_depth == 0 || next.is_none() {
                 break Some((nref.key.clone(), nref.value.clone()));
             }
@@ -169,7 +156,7 @@ where
     /// Return an iterator over all entries in this instance.
     pub fn iter(&self) -> Iter<K, V> {
         Iter {
-            root: self.root.as_ref().map(std::ops::Deref::deref),
+            root: self.root.as_ref().map(Deref::deref),
             node_iter: vec![].into_iter(),
             after_key: Some(Bound::Unbounded),
             limit: ITER_LIMIT,
@@ -179,7 +166,7 @@ where
     /// Range over all entries from low to high.
     pub fn range(&self, low: Bound<K>, high: Bound<K>) -> Range<K, V> {
         Range {
-            root: self.root.as_ref().map(std::ops::Deref::deref),
+            root: self.root.as_ref().map(Deref::deref),
             node_iter: vec![].into_iter(),
             low: Some(low),
             high,
@@ -189,14 +176,17 @@ where
 
     /// Create a new {key, value} entry in the index. If key is already
     /// present returns error.
-    pub fn create(&mut self, key: K, value: V) -> Option<LlrbError<K>> {
+    pub fn create(&mut self, key: K, value: V) -> Result<(), Error<K>> {
         let (mut root, error) = Llrb::insert(self.root.take(), key, value);
         root.set_black();
         self.root = Some(root);
-        if error.is_none() {
-            self.n_count += 1;
+        match error {
+            Some(err) => Err(err),
+            None => {
+                self.n_count += 1;
+                Ok(())
+            }
         }
-        error
     }
 
     /// Set value for key. If there is an existing entry for key,
@@ -205,10 +195,13 @@ where
         let (mut root, old_value) = Llrb::upsert(self.root.take(), key, value);
         root.set_black();
         self.root = Some(root);
-        if old_value.is_none() {
-            self.n_count += 1;
+        match old_value {
+            old_value @ Some(_) => old_value,
+            None => {
+                self.n_count += 1;
+                None
+            }
         }
-        old_value
     }
 
     /// Delete key from this instance and return its value. If key is
@@ -218,8 +211,7 @@ where
         K: Borrow<Q>,
         Q: Ord + ?Sized,
     {
-        let root = self.root.take();
-        let (root, old_value) = match Llrb::do_delete(root, key) {
+        let (root, old_value) = match Llrb::do_delete(self.root.take(), key) {
             (None, old_value) => (None, old_value),
             (Some(mut root), old_value) => {
                 root.set_black();
@@ -241,12 +233,10 @@ where
     ///
     /// Additionally return full statistics on the tree. Refer to [`Stats`]
     /// for more information.
-    pub fn validate(&self) -> Result<Stats, LlrbError<K>> {
-        let root = self.root.as_ref().map(std::ops::Deref::deref);
+    pub fn validate(&self) -> Result<Stats, Error<K>> {
+        let root = self.root.as_ref().map(Deref::deref);
         let (red, nb, d) = (is_red(root), 0, 0);
-        let node_size = std::mem::size_of::<Node<K, V>>();
-        let mut stats = Stats::new(self.n_count, node_size);
-
+        let mut stats = Stats::new(self.n_count, mem::size_of::<Node<K, V>>());
         stats.set_depths(Depth::new());
         let blacks = Llrb::validate_tree(root, red, nb, d, &mut stats)?;
         stats.set_blacks(blacks);
@@ -259,15 +249,15 @@ where
         mut nb: usize,
         depth: usize,
         stats: &mut Stats,
-    ) -> Result<usize, LlrbError<K>> {
+    ) -> Result<usize, Error<K>> {
         if node.is_none() {
             stats.depths.as_mut().unwrap().sample(depth);
             return Ok(nb);
         }
 
-        let red = is_red(node.as_ref().map(std::ops::Deref::deref));
+        let red = is_red(node.as_ref().map(Deref::deref));
         if fromred && red {
-            return Err(LlrbError::ConsecutiveReds);
+            return Err(Error::ConsecutiveReds);
         }
         if !red {
             nb += 1;
@@ -277,24 +267,21 @@ where
         let lblacks = Llrb::validate_tree(left, red, nb, depth + 1, stats)?;
         let rblacks = Llrb::validate_tree(right, red, nb, depth + 1, stats)?;
         if lblacks != rblacks {
-            let err = format!(
-                "llrb_store: unbalanced blacks left: {} and right: {}",
-                lblacks, rblacks,
-            );
-            return Err(LlrbError::UnbalancedBlacks(err));
+            let err = format!("left: {} right: {}", lblacks, rblacks);
+            return Err(Error::UnbalancedBlacks(err));
         }
         if node.left.is_some() {
             let left = node.left.as_ref().unwrap();
             if left.key.ge(&node.key) {
                 let (lkey, parent) = (left.key.clone(), node.key.clone());
-                return Err(LlrbError::SortError(lkey, parent));
+                return Err(Error::SortError(lkey, parent));
             }
         }
         if node.right.is_some() {
             let right = node.right.as_ref().unwrap();
             if right.key.le(&node.key) {
                 let (rkey, parent) = (right.key.clone(), node.key.clone());
-                return Err(LlrbError::SortError(rkey, parent));
+                return Err(Error::SortError(rkey, parent));
             }
         }
         Ok(lblacks)
@@ -325,7 +312,7 @@ where
                 (Llrb::walkuprot_23(node), e)
             }
             Ordering::Equal => {
-                let err = Some(LlrbError::OverwriteKey);
+                let err = Some(Error::OverwriteKey);
                 (Llrb::walkuprot_23(node), err)
             }
         }
@@ -862,12 +849,12 @@ where
 
     #[inline]
     fn left_deref(&self) -> Option<&Node<K, V>> {
-        self.left.as_ref().map(std::ops::Deref::deref)
+        self.left.as_ref().map(Deref::deref)
     }
 
     #[inline]
     fn right_deref(&self) -> Option<&Node<K, V>> {
-        self.right.as_ref().map(std::ops::Deref::deref)
+        self.right.as_ref().map(Deref::deref)
     }
 
     // prepend operation, equivalent to SET / INSERT / UPDATE
@@ -897,7 +884,10 @@ where
     }
 }
 
-/// Statistics on LLRB tree.
+/// Statistics on [`Llrb`] tree. Serves two purpose:
+///
+/// * To get partial but quick statistics via [`Llrb::stats`] method.
+/// * To get full statisics via [`Llrb::validate`] method.
 #[derive(Default, Debug)]
 pub struct Stats {
     entries: usize, // number of entries in the tree.
@@ -910,9 +900,9 @@ impl Stats {
     fn new(entries: usize, node_size: usize) -> Stats {
         Stats {
             entries,
-            blacks: None,
-            depths: None,
             node_size,
+            blacks: Default::default(),
+            depths: Default::default(),
         }
     }
 
@@ -926,21 +916,38 @@ impl Stats {
         self.depths = Some(depths)
     }
 
+    /// Return number entries in [`Llrb`] instance.
     #[inline]
     pub fn entries(&self) -> usize {
         self.entries
     }
 
+    /// Return node-size, including over-head for `Llrb<k,V>`. Although
+    /// the node overhead is constant, the node size varies based on
+    /// key and value types. EG:
+    ///
+    /// ```
+    /// use llrb_index::Llrb;
+    /// let mut llrb: Llrb<u64,i128> = Llrb::new("myinstance");
+    ///
+    /// // size of key: 8 bytes
+    /// // size of value: 16 bytes
+    /// // overhead is 24 bytes
+    /// assert_eq!(llrb.stats().node_size(), 48);
+    /// ```
     #[inline]
     pub fn node_size(&self) -> usize {
         self.node_size
     }
 
+    /// Return number of black nodes from root to leaf, on both left
+    /// and right child.
     #[inline]
     pub fn blacks(&self) -> Option<usize> {
         self.blacks
     }
 
+    /// Return [`Depth`] statistics.
     pub fn depths(&self) -> Option<Depth> {
         if self.depths.as_ref().unwrap().samples() == 0 {
             None

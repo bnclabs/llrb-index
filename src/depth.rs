@@ -1,5 +1,5 @@
 /// Depth calculates minimum, maximum, average and percentile of leaf-node
-/// depth in the LLRB tree.
+/// depths in the [`Llrb`] tree.
 #[derive(Clone, Default, Debug)]
 pub struct Depth {
     samples: usize,
@@ -20,31 +20,31 @@ impl Depth {
     pub(crate) fn sample(&mut self, depth: usize) {
         self.samples += 1;
         self.total += depth;
-        if self.min == 0 || self.min > depth {
+        if self.min == 0 || depth < self.min {
             self.min = depth
         }
-        if self.max == 0 || self.max < depth {
+        if self.max == 0 || depth > self.max {
             self.max = depth
         }
         self.depths[depth as usize] += 1;
     }
 
-    /// Return number of leaf-nodes sample for depth in LLRB tree.
+    /// Return number of leaf-nodes sampled in [`Llrb`] instance.
     pub fn samples(&self) -> usize {
         self.samples
     }
 
-    /// Return minimum depth of leaf-node in LLRB tree.
+    /// Return minimum depth of leaf-node in [`Llrb`] instance.
     pub fn min(&self) -> usize {
         self.min
     }
 
-    /// Return maximum depth of leaf-node in LLRB tree.
+    /// Return maximum depth of leaf-node in [`Llrb`] instance.
     pub fn max(&self) -> usize {
         self.max
     }
 
-    /// Return the average depth of leaf-nodes in LLRB tree.
+    /// Return the average depth of leaf-nodes in [`Llrb`] instance.
     pub fn mean(&self) -> usize {
         self.total / self.samples
     }
@@ -66,6 +66,7 @@ impl Depth {
         percentiles
     }
 
+    /// Pretty print depth statistics in human readable format, useful in logs.
     pub fn pretty_print(&self, prefix: &str) {
         let mean = self.mean();
         println!(
@@ -80,6 +81,7 @@ impl Depth {
         }
     }
 
+    /// Convert depth statistics to JSON format, useful for plotting.
     pub fn json(&self) -> String {
         let ps: Vec<String> = self
             .percentiles()

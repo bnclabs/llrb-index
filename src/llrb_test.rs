@@ -4,7 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use rand::prelude::random;
 use rand::{rngs::SmallRng, SeedableRng};
 
-use crate::error::LlrbError;
+use crate::error::Error;
 use crate::llrb::Llrb;
 
 #[test]
@@ -35,32 +35,32 @@ fn test_create() {
     let mut llrb: Llrb<i64, i64> = Llrb::new("test-llrb");
     let mut refns = RefNodes::new(10);
 
-    assert!(llrb.create(2, 10).is_none());
+    assert!(llrb.create(2, 10).is_ok());
     refns.create(2, 10);
-    assert!(llrb.create(1, 10).is_none());
+    assert!(llrb.create(1, 10).is_ok());
     refns.create(1, 10);
-    assert!(llrb.create(3, 10).is_none());
+    assert!(llrb.create(3, 10).is_ok());
     refns.create(3, 10);
-    assert!(llrb.create(6, 10).is_none());
+    assert!(llrb.create(6, 10).is_ok());
     refns.create(6, 10);
-    assert!(llrb.create(5, 10).is_none());
+    assert!(llrb.create(5, 10).is_ok());
     refns.create(5, 10);
-    assert!(llrb.create(4, 10).is_none());
+    assert!(llrb.create(4, 10).is_ok());
     refns.create(4, 10);
-    assert!(llrb.create(8, 10).is_none());
+    assert!(llrb.create(8, 10).is_ok());
     refns.create(8, 10);
-    assert!(llrb.create(0, 10).is_none());
+    assert!(llrb.create(0, 10).is_ok());
     refns.create(0, 10);
-    assert!(llrb.create(9, 10).is_none());
+    assert!(llrb.create(9, 10).is_ok());
     refns.create(9, 10);
-    assert!(llrb.create(7, 10).is_none());
+    assert!(llrb.create(7, 10).is_ok());
     refns.create(7, 10);
 
     assert_eq!(llrb.len(), 10);
     assert!(llrb.validate().is_ok());
 
     // error case
-    assert_eq!(llrb.create(7, 20), Some(LlrbError::OverwriteKey));
+    assert_eq!(llrb.create(7, 20), Err(Error::OverwriteKey));
 
     // test get
     for i in 0..10 {
@@ -198,7 +198,7 @@ fn test_random() {
 
     assert_eq!(llrb.random(&mut rng), None);
 
-    assert!(llrb.create(0, 0).is_none());
+    assert!(llrb.create(0, 0).is_ok());
     assert_eq!(llrb.random(&mut rng), Some((0, 0)));
     assert_eq!(llrb.random(&mut rng), Some((0, 0)));
 
@@ -217,25 +217,25 @@ fn test_iter() {
     let mut llrb: Llrb<i64, i64> = Llrb::new("test-llrb");
     let mut refns = RefNodes::new(10);
 
-    assert!(llrb.create(2, 10).is_none());
+    assert!(llrb.create(2, 10).is_ok());
     refns.create(2, 10);
-    assert!(llrb.create(1, 10).is_none());
+    assert!(llrb.create(1, 10).is_ok());
     refns.create(1, 10);
-    assert!(llrb.create(3, 10).is_none());
+    assert!(llrb.create(3, 10).is_ok());
     refns.create(3, 10);
-    assert!(llrb.create(6, 10).is_none());
+    assert!(llrb.create(6, 10).is_ok());
     refns.create(6, 10);
-    assert!(llrb.create(5, 10).is_none());
+    assert!(llrb.create(5, 10).is_ok());
     refns.create(5, 10);
-    assert!(llrb.create(4, 10).is_none());
+    assert!(llrb.create(4, 10).is_ok());
     refns.create(4, 10);
-    assert!(llrb.create(8, 10).is_none());
+    assert!(llrb.create(8, 10).is_ok());
     refns.create(8, 10);
-    assert!(llrb.create(0, 10).is_none());
+    assert!(llrb.create(0, 10).is_ok());
     refns.create(0, 10);
-    assert!(llrb.create(9, 10).is_none());
+    assert!(llrb.create(9, 10).is_ok());
     refns.create(9, 10);
-    assert!(llrb.create(7, 10).is_none());
+    assert!(llrb.create(7, 10).is_ok());
     refns.create(7, 10);
 
     assert_eq!(llrb.len(), 10);
@@ -262,25 +262,25 @@ fn test_range() {
     let mut llrb: Llrb<i64, i64> = Llrb::new("test-llrb");
     let mut refns = RefNodes::new(10);
 
-    assert!(llrb.create(2, 10).is_none());
+    assert!(llrb.create(2, 10).is_ok());
     refns.create(2, 10);
-    assert!(llrb.create(1, 10).is_none());
+    assert!(llrb.create(1, 10).is_ok());
     refns.create(1, 10);
-    assert!(llrb.create(3, 10).is_none());
+    assert!(llrb.create(3, 10).is_ok());
     refns.create(3, 10);
-    assert!(llrb.create(6, 10).is_none());
+    assert!(llrb.create(6, 10).is_ok());
     refns.create(6, 10);
-    assert!(llrb.create(5, 10).is_none());
+    assert!(llrb.create(5, 10).is_ok());
     refns.create(5, 10);
-    assert!(llrb.create(4, 10).is_none());
+    assert!(llrb.create(4, 10).is_ok());
     refns.create(4, 10);
-    assert!(llrb.create(8, 10).is_none());
+    assert!(llrb.create(8, 10).is_ok());
     refns.create(8, 10);
-    assert!(llrb.create(0, 10).is_none());
+    assert!(llrb.create(0, 10).is_ok());
     refns.create(0, 10);
-    assert!(llrb.create(9, 10).is_none());
+    assert!(llrb.create(9, 10).is_ok());
     refns.create(9, 10);
-    assert!(llrb.create(7, 10).is_none());
+    assert!(llrb.create(7, 10).is_ok());
     refns.create(7, 10);
 
     assert_eq!(llrb.len(), 10);
@@ -338,7 +338,7 @@ fn test_crud() {
         match op {
             0 => {
                 let ok1 = llrb.get(&key).is_none();
-                let ok2 = llrb.create(key, value).is_none();
+                let ok2 = llrb.create(key, value).is_ok();
                 refns.create(key, value);
                 assert_eq!(ok1, ok2);
                 false

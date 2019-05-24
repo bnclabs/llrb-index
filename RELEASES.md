@@ -26,6 +26,18 @@ HEAD
 * Range scan, to iterate between a ``low`` and ``high``.
 * Reverse iteration.
 
+Code Review checklist
+=====================
+
+* [ ] Review and check for un-necessary copy, and allocations.
+* [ ] Review resize calls on `Vec`.
+* [ ] Review (as ...) type casting, to panic on data loss.
+* [ ] Reduce trait constraints for Type parameters on public APIs.
+* [ ] Public APIs can be as generic as possible. Check whether there
+      is a scope for `AsRef` or `Borrow` constraints.
+* [ ] Document error variants.
+* [ ] Check for dangling links in rustdoc.
+
 Release Checklist
 =================
 
@@ -35,12 +47,10 @@ Release Checklist
   * __patch__: bug fixes.
 * Cargo checklist
   * cargo +stable build; cargo +nightly build
-  * cargo +stable doc
-  * cargo +nightly clippy --all-targets --all-features
-  * cargo +nightly audit
-  * cargo +nightly test
+  * cargo +stable doc; cargo +nightly doc
+  * cargo +stable test; cargo +nightly test
   * cargo +nightly bench
-  * cargo +nightly benchcmp <old> <new>
+  * cargo +nightly clippy --all-targets --all-features
   * cargo fix --edition --all-targets
 * Travis-CI integration.
 * Spell check.

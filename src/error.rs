@@ -1,7 +1,7 @@
-/// LlrbError enumerates over all possible errors that this package
+/// Error enumerates over all possible errors that this package
 /// shall return.
 #[derive(Debug, PartialEq)]
-pub enum LlrbError<K>
+pub enum Error<K>
 where
     K: Clone + Ord,
 {
