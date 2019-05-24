@@ -10,15 +10,8 @@ use rand::Rng;
 use crate::depth::Depth;
 use crate::error::Error;
 
+// TODO: Should we make this configurable ???
 const ITER_LIMIT: usize = 100;
-
-type Insert<K, V> = (Box<Node<K, V>>, Option<Error<K>>);
-
-type Upsert<K, V> = (Box<Node<K, V>>, Option<V>);
-
-type Delete<K, V> = (Option<Box<Node<K, V>>>, Option<V>);
-
-type Delmin<K, V> = (Option<Box<Node<K, V>>>, Option<Node<K, V>>);
 
 /// Llrb manage a single instance of in-memory index using
 /// [left-leaning-red-black][llrb] tree.
@@ -103,77 +96,20 @@ where
     }
 }
 
-/// CRUD operations on Llrb instance.
+type Insert<K, V> = (Box<Node<K, V>>, Option<Error<K>>);
+
+type Upsert<K, V> = (Box<Node<K, V>>, Option<V>);
+
+type Delete<K, V> = (Option<Box<Node<K, V>>>, Option<V>);
+
+type Delmin<K, V> = (Option<Box<Node<K, V>>>, Option<Node<K, V>>);
+
+/// Write operations on Llrb instance.
 impl<K, V> Llrb<K, V>
 where
     K: Clone + Ord,
     V: Clone,
 {
-    /// Get the value for key.
-    pub fn get<Q>(&self, key: &Q) -> Option<V>
-    where
-        K: Borrow<Q>,
-        Q: Ord + ?Sized,
-    {
-        let root = self.root.as_ref().map(Deref::deref);
-        self.do_get(root, key)
-    }
-
-    fn do_get<Q>(&self, mut node: Option<&Node<K, V>>, key: &Q) -> Option<V>
-    where
-        K: Borrow<Q>,
-        Q: Ord + ?Sized,
-    {
-        while let Some(nref) = node {
-            node = match nref.key.borrow().cmp(key) {
-                Ordering::Less => nref.right_deref(),
-                Ordering::Greater => nref.left_deref(),
-                Ordering::Equal => return Some(nref.value.clone()),
-            };
-        }
-        None
-    }
-
-    /// Return a random entry from this index.
-    pub fn random<R: Rng>(&self, rng: &mut R) -> Option<(K, V)> {
-        let mut nref = self.root.as_ref().map(Deref::deref)?;
-
-        let mut at_depth = rng.gen::<u8>() % 40;
-        loop {
-            let next = match rng.gen::<u8>() % 2 {
-                0 => nref.left_deref(),
-                1 => nref.right_deref(),
-                _ => unreachable!(),
-            };
-            if at_depth == 0 || next.is_none() {
-                break Some((nref.key.clone(), nref.value.clone()));
-            }
-            at_depth -= 1;
-            nref = next.unwrap();
-        }
-    }
-
-    /// Return an iterator over all entries in this instance.
-    pub fn iter(&self) -> Iter<K, V> {
-        Iter {
-            root: self.root.as_ref().map(Deref::deref),
-            node_iter: vec![].into_iter(),
-            after_key: Some(Bound::Unbounded),
-            limit: ITER_LIMIT,
-        }
-    }
-
-    /// Range over all entries from low to high.
-    pub fn range(&self, low: Bound<K>, high: Bound<K>) -> Range<K, V> {
-        Range {
-            root: self.root.as_ref().map(Deref::deref),
-            node_iter: vec![].into_iter(),
-            low: Some(low),
-            high,
-            limit: ITER_LIMIT,
-        }
-    }
-
     /// Create a new {key, value} entry in the index. If key is already
     /// present returns error.
     pub fn create(&mut self, key: K, value: V) -> Result<(), Error<K>> {
@@ -242,49 +178,69 @@ where
         stats.set_blacks(blacks);
         Ok(stats)
     }
+}
 
-    fn validate_tree(
-        node: Option<&Node<K, V>>,
-        fromred: bool,
-        mut nb: usize,
-        depth: usize,
-        stats: &mut Stats,
-    ) -> Result<usize, Error<K>> {
-        if node.is_none() {
-            stats.depths.as_mut().unwrap().sample(depth);
-            return Ok(nb);
+/// Read operations on Llrb instance.
+impl<K, V> Llrb<K, V>
+where
+    K: Clone + Ord,
+    V: Clone,
+{
+    /// Get the value for key.
+    pub fn get<Q>(&self, key: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: Ord + ?Sized,
+    {
+        let mut node = self.root.as_ref().map(Deref::deref);
+        while let Some(nref) = node {
+            node = match nref.key.borrow().cmp(key) {
+                Ordering::Less => nref.right_deref(),
+                Ordering::Greater => nref.left_deref(),
+                Ordering::Equal => return Some(nref.value.clone()),
+            };
         }
+        None
+    }
 
-        let red = is_red(node.as_ref().map(Deref::deref));
-        if fromred && red {
-            return Err(Error::ConsecutiveReds);
-        }
-        if !red {
-            nb += 1;
-        }
-        let node = &node.as_ref().unwrap();
-        let (left, right) = (node.left_deref(), node.right_deref());
-        let lblacks = Llrb::validate_tree(left, red, nb, depth + 1, stats)?;
-        let rblacks = Llrb::validate_tree(right, red, nb, depth + 1, stats)?;
-        if lblacks != rblacks {
-            let err = format!("left: {} right: {}", lblacks, rblacks);
-            return Err(Error::UnbalancedBlacks(err));
-        }
-        if node.left.is_some() {
-            let left = node.left.as_ref().unwrap();
-            if left.key.ge(&node.key) {
-                let (lkey, parent) = (left.key.clone(), node.key.clone());
-                return Err(Error::SortError(lkey, parent));
+    /// Return a random entry from this index.
+    pub fn random<R: Rng>(&self, rng: &mut R) -> Option<(K, V)> {
+        let mut nref = self.root.as_ref().map(Deref::deref)?;
+
+        let mut at_depth = rng.gen::<u8>() % 40;
+        loop {
+            let next = match rng.gen::<u8>() % 2 {
+                0 => nref.left_deref(),
+                1 => nref.right_deref(),
+                _ => unreachable!(),
+            };
+            if at_depth == 0 || next.is_none() {
+                break Some((nref.key.clone(), nref.value.clone()));
             }
+            at_depth -= 1;
+            nref = next.unwrap();
         }
-        if node.right.is_some() {
-            let right = node.right.as_ref().unwrap();
-            if right.key.le(&node.key) {
-                let (rkey, parent) = (right.key.clone(), node.key.clone());
-                return Err(Error::SortError(rkey, parent));
-            }
+    }
+
+    /// Return an iterator over all entries in this instance.
+    pub fn iter(&self) -> Iter<K, V> {
+        Iter {
+            root: self.root.as_ref().map(Deref::deref),
+            node_iter: vec![].into_iter(),
+            after_key: Some(Bound::Unbounded),
+            limit: ITER_LIMIT,
         }
-        Ok(lblacks)
+    }
+
+    /// Range over all entries from low to high.
+    pub fn range(&self, low: Bound<K>, high: Bound<K>) -> Range<K, V> {
+        Range {
+            root: self.root.as_ref().map(Deref::deref),
+            node_iter: vec![].into_iter(),
+            low: Some(low),
+            high,
+            limit: ITER_LIMIT,
+        }
     }
 }
 
@@ -416,6 +372,50 @@ where
         let (left, old_node) = Llrb::delete_min(node.left.take());
         node.left = left;
         (Some(Llrb::fixup(node)), old_node)
+    }
+
+    fn validate_tree(
+        node: Option<&Node<K, V>>,
+        fromred: bool,
+        mut nb: usize,
+        depth: usize,
+        stats: &mut Stats,
+    ) -> Result<usize, Error<K>> {
+        if node.is_none() {
+            stats.depths.as_mut().unwrap().sample(depth);
+            return Ok(nb);
+        }
+
+        let red = is_red(node.as_ref().map(Deref::deref));
+        if fromred && red {
+            return Err(Error::ConsecutiveReds);
+        }
+        if !red {
+            nb += 1;
+        }
+        let node = &node.as_ref().unwrap();
+        let (left, right) = (node.left_deref(), node.right_deref());
+        let lblacks = Llrb::validate_tree(left, red, nb, depth + 1, stats)?;
+        let rblacks = Llrb::validate_tree(right, red, nb, depth + 1, stats)?;
+        if lblacks != rblacks {
+            let err = format!("left: {} right: {}", lblacks, rblacks);
+            return Err(Error::UnbalancedBlacks(err));
+        }
+        if node.left.is_some() {
+            let left = node.left.as_ref().unwrap();
+            if left.key.ge(&node.key) {
+                let (lkey, parent) = (left.key.clone(), node.key.clone());
+                return Err(Error::SortError(lkey, parent));
+            }
+        }
+        if node.right.is_some() {
+            let right = node.right.as_ref().unwrap();
+            if right.key.le(&node.key) {
+                let (rkey, parent) = (right.key.clone(), node.key.clone());
+                return Err(Error::SortError(rkey, parent));
+            }
+        }
+        Ok(lblacks)
     }
 
     //--------- rotation routines for 2-3 algorithm ----------------
