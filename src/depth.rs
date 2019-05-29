@@ -1,3 +1,6 @@
+#[allow(unused_imports)]
+use crate::Llrb;
+
 /// Depth calculates minimum, maximum, average and percentile of leaf-node
 /// depths in the [`Llrb`] tree.
 #[derive(Clone, Default, Debug)]

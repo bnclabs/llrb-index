@@ -111,7 +111,7 @@ where
     V: Clone,
 {
     /// Create a new {key, value} entry in the index. If key is already
-    /// present returns error.
+    /// present return error.
     pub fn create(&mut self, key: K, value: V) -> Result<(), Error<K>> {
         let (mut root, error) = Llrb::insert(self.root.take(), key, value);
         root.set_black();
@@ -164,8 +164,8 @@ where
     /// Validate LLRB tree with following rules:
     ///
     /// * From root to any leaf, no consecutive reds allowed in its path.
-    /// * Number of blacks should be same on under left child and right child.
-    /// * Make sure that keys are in sorted order.
+    /// * Number of blacks should be same under left child and right child.
+    /// * Make sure keys are in sorted order.
     ///
     /// Additionally return full statistics on the tree. Refer to [`Stats`]
     /// for more information.
