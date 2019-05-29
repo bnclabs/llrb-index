@@ -1,7 +1,13 @@
-HEAD
-====
+0.3.0
+=====
 
 - Implement Empty type that can be used as values.
+- Breaking changes.
+  * Rename LlrbError to Error.
+  * Replace Clone implementation for Llrb with #[drive(Clone)]
+  * Change return type for create() API.
+- rustdoc.
+
 
 0.2.0
 =====
