@@ -2,7 +2,7 @@ use std::{
     borrow::Borrow,
     cmp::{Ord, Ordering},
     mem,
-    ops::{Bound, Deref, DerefMut},
+    ops::{Bound, Deref, DerefMut, RangeBounds},
 };
 
 use rand::Rng;
@@ -233,7 +233,23 @@ where
     }
 
     /// Range over all entries from low to high.
-    pub fn range(&self, low: Bound<K>, high: Bound<K>) -> Range<K, V> {
+    pub fn range<Q, R>(&self, range: R) -> Range<K, V>
+    where
+        K: Borrow<Q>,
+        R: RangeBounds<Q>,
+        Q: Ord + ToOwned<Owned = K> + ?Sized,
+    {
+        let low: Bound<K> = match range.start_bound() {
+            Bound::Included(key) => Bound::Included(key.to_owned()),
+            Bound::Excluded(key) => Bound::Excluded(key.to_owned()),
+            Bound::Unbounded => Bound::Unbounded,
+        };
+        let high: Bound<K> = match range.end_bound() {
+            Bound::Included(key) => Bound::Included(key.to_owned()),
+            Bound::Excluded(key) => Bound::Excluded(key.to_owned()),
+            Bound::Unbounded => Bound::Unbounded,
+        };
+
         Range {
             root: self.root.as_ref().map(Deref::deref),
             node_iter: vec![].into_iter(),

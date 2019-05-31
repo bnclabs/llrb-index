@@ -75,19 +75,19 @@
 //! llrb.set("key2".to_string(), "value2".to_string());
 //! llrb.set("key3".to_string(), "value3".to_string());
 //!
-//! let low = Bound::Excluded("key1".to_string());
-//! let high = Bound::Excluded("key2".to_string());
-//! let item = llrb.range(low, high).next();
+//! let low = Bound::Excluded("key1");
+//! let high = Bound::Excluded("key2");
+//! let item = llrb.range::<str, _>((low, high)).next();
 //! assert_eq!(item, None);
 //!
-//! let low = Bound::Excluded("key1".to_string());
-//! let high = Bound::Excluded("key3".to_string());
-//! let item = llrb.range(low, high).next();
+//! let low = Bound::Excluded("key1");
+//! let high = Bound::Excluded("key3");
+//! let item = llrb.range::<str, _>((low, high)).next();
 //! assert_eq!(item, Some(("key2".to_string(), "value2".to_string())));
 //!
-//! let low = Bound::Included("key1".to_string());
-//! let high = Bound::Included("key3".to_string());
-//! let mut ranger = llrb.range(low, high);
+//! let low = Bound::Included("key1");
+//! let high = Bound::Included("key3");
+//! let mut ranger = llrb.range::<str, _>((low, high));
 //! let item = ranger.next();
 //! assert_eq!(item, Some(("key1".to_string(), "value1".to_string())));
 //! let item = ranger.last();
@@ -104,9 +104,9 @@
 //! llrb.set("key2".to_string(), "value2".to_string());
 //! llrb.set("key3".to_string(), "value3".to_string());
 //!
-//! let low = Bound::Included("key1".to_string());
-//! let high = Bound::Included("key3".to_string());
-//! let mut iter = llrb.range(low, high).rev();
+//! let low = Bound::Included("key1");
+//! let high = Bound::Included("key3");
+//! let mut iter = llrb.range::<str, _>((low, high)).rev();
 //! let item = iter.next();
 //! assert_eq!(item, Some(("key3".to_string(), "value3".to_string())));
 //! let item = iter.last();

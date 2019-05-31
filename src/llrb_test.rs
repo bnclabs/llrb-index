@@ -290,7 +290,7 @@ fn test_range() {
     for _ in 0..1_000 {
         let (low, high) = random_low_high(llrb.len());
 
-        let mut iter = llrb.range(low, high);
+        let mut iter = llrb.range((low, high));
         let mut iter_ref = refns.range(low, high);
         loop {
             match (iter.next(), iter_ref.next()) {
@@ -307,7 +307,7 @@ fn test_range() {
         assert_eq!(iter.next(), None);
         assert_eq!(iter.next(), None);
 
-        let mut iter = llrb.range(low, high).rev();
+        let mut iter = llrb.range((low, high)).rev();
         let mut iter_ref = refns.reverse(low, high);
         loop {
             match (iter.next(), iter_ref.next()) {
@@ -387,7 +387,7 @@ fn test_crud() {
         let (low, high) = random_low_high(size);
         //println!("test loop {:?} {:?}", low, high);
 
-        let mut iter = llrb.range(low, high);
+        let mut iter = llrb.range((low, high));
         let mut iter_ref = refns.range(low, high);
         loop {
             match (iter.next(), iter_ref.next()) {
@@ -402,7 +402,7 @@ fn test_crud() {
             }
         }
 
-        let mut iter = llrb.range(low, high).rev();
+        let mut iter = llrb.range((low, high)).rev();
         let mut iter_ref = refns.reverse(low, high);
         loop {
             match (iter.next(), iter_ref.next()) {
