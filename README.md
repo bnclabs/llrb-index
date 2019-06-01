@@ -34,8 +34,10 @@ compiler and nightly builds.
 
 **Useful links**
 
-Refer to this [Wikipedia link][wikilink] for more information on LLRB algorithm.
+* Refer to this [Wikipedia link][wikilink] for more information on LLRB algorithm.
+* [Discussion][disc1] on the design choice over get() and range() API.
 
 [wikilink]: https://en.wikipedia.org/wiki/Left-leaning_red%E2%80%93black_tree
 [agpl]: https://github.com/bnclabs/llrb-index/blob/master/LICENSE
 [#1]: https://github.com/bnclabs/llrb-index/issues/1
+[disc1]: https://users.rust-lang.org/t/what-would-be-proper-api-for-index-get/28730/5
