@@ -106,7 +106,7 @@
 //!
 //! let low = Bound::Included("key1");
 //! let high = Bound::Included("key3");
-//! let mut iter = llrb.range::<str, _>((low, high)).rev();
+//! let mut iter = llrb.reverse::<str, _>((low, high));
 //! let item = iter.next();
 //! assert_eq!(item, Some(("key3".to_string(), "value3".to_string())));
 //! let item = iter.last();

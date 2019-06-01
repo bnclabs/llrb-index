@@ -307,7 +307,7 @@ fn test_range() {
         assert_eq!(iter.next(), None);
         assert_eq!(iter.next(), None);
 
-        let mut iter = llrb.range((low, high)).rev();
+        let mut iter = llrb.reverse((low, high));
         let mut iter_ref = refns.reverse(low, high);
         loop {
             match (iter.next(), iter_ref.next()) {
@@ -402,7 +402,7 @@ fn test_crud() {
             }
         }
 
-        let mut iter = llrb.range((low, high)).rev();
+        let mut iter = llrb.reverse((low, high));
         let mut iter_ref = refns.reverse(low, high);
         loop {
             match (iter.next(), iter_ref.next()) {

@@ -1,7 +1,7 @@
 use std::{
     borrow::Borrow,
     cmp::{Ord, Ordering},
-    mem,
+    marker, mem,
     ops::{Bound, Deref, DerefMut, RangeBounds},
 };
 
@@ -9,9 +9,6 @@ use rand::Rng;
 
 use crate::depth::Depth;
 use crate::error::Error;
-
-// TODO: Should we make this configurable ???
-const ITER_LIMIT: usize = 100;
 
 /// Llrb manage a single instance of in-memory index using
 /// [left-leaning-red-black][llrb] tree.
@@ -224,39 +221,44 @@ where
 
     /// Return an iterator over all entries in this instance.
     pub fn iter(&self) -> Iter<K, V> {
+        let node = self.root.as_ref().map(Deref::deref);
         Iter {
-            root: self.root.as_ref().map(Deref::deref),
-            node_iter: vec![].into_iter(),
-            after_key: Some(Bound::Unbounded),
-            limit: ITER_LIMIT,
+            paths: Some(build_iter(IFlag::Left, node, vec![])),
         }
     }
 
     /// Range over all entries from low to high.
-    pub fn range<Q, R>(&self, range: R) -> Range<K, V>
+    pub fn range<Q, R>(&self, range: R) -> Range<K, V, R, Q>
     where
         K: Borrow<Q>,
         R: RangeBounds<Q>,
-        Q: Ord + ToOwned<Owned = K> + ?Sized,
+        Q: Ord + ?Sized,
     {
-        let low: Bound<K> = match range.start_bound() {
-            Bound::Included(key) => Bound::Included(key.to_owned()),
-            Bound::Excluded(key) => Bound::Excluded(key.to_owned()),
-            Bound::Unbounded => Bound::Unbounded,
+        let root = self.root.as_ref().map(Deref::deref);
+        let paths = match range.start_bound() {
+            Bound::Unbounded => Some(build_iter(IFlag::Left, root, vec![])),
+            Bound::Included(low) => Some(find_start(root, low, true, vec![])),
+            Bound::Excluded(low) => Some(find_start(root, low, false, vec![])),
         };
-        let high: Bound<K> = match range.end_bound() {
-            Bound::Included(key) => Bound::Included(key.to_owned()),
-            Bound::Excluded(key) => Bound::Excluded(key.to_owned()),
-            Bound::Unbounded => Bound::Unbounded,
-        };
+        let high = marker::PhantomData;
+        Range { range, paths, high }
+    }
 
-        Range {
-            root: self.root.as_ref().map(Deref::deref),
-            node_iter: vec![].into_iter(),
-            low: Some(low),
-            high,
-            limit: ITER_LIMIT,
-        }
+    /// Reverse range over all entries from high to low.
+    pub fn reverse<Q, R>(&self, range: R) -> Reverse<K, V, R, Q>
+    where
+        K: Borrow<Q>,
+        R: RangeBounds<Q>,
+        Q: Ord + ?Sized,
+    {
+        let root = self.root.as_ref().map(Deref::deref);
+        let paths = match range.end_bound() {
+            Bound::Unbounded => Some(build_iter(IFlag::Right, root, vec![])),
+            Bound::Included(high) => Some(find_end(root, high, true, vec![])),
+            Bound::Excluded(high) => Some(find_end(root, high, false, vec![])),
+        };
+        let low = marker::PhantomData;
+        Reverse { range, paths, low }
     }
 }
 
@@ -573,49 +575,7 @@ where
     K: Clone + Ord,
     V: Clone,
 {
-    root: Option<&'a Node<K, V>>,
-    node_iter: std::vec::IntoIter<(K, V)>,
-    after_key: Option<Bound<K>>,
-    limit: usize,
-}
-
-impl<'a, K, V> Iter<'a, K, V>
-where
-    K: Clone + Ord,
-    V: Clone,
-{
-    fn scan_iter(
-        &self,
-        node: Option<&Node<K, V>>,
-        acc: &mut Vec<(K, V)>, // accumulator for batch of nodes
-    ) -> bool {
-        if node.is_none() {
-            return true;
-        }
-        let node = node.unwrap();
-
-        let (left, right) = (node.left_deref(), node.right_deref());
-        match &self.after_key {
-            None => return false,
-            Some(Bound::Included(akey)) | Some(Bound::Excluded(akey)) => {
-                if node.key.borrow().le(akey) {
-                    return self.scan_iter(right, acc);
-                }
-            }
-            Some(Bound::Unbounded) => (),
-        }
-
-        if !self.scan_iter(left, acc) {
-            return false;
-        }
-
-        acc.push((node.key.clone(), node.value.clone()));
-        if acc.len() >= self.limit {
-            return false;
-        }
-
-        self.scan_iter(right, acc)
-    }
+    paths: Option<Vec<Fragment<'a, K, V>>>,
 }
 
 impl<'a, K, V> Iterator for Iter<'a, K, V>
@@ -626,108 +586,92 @@ where
     type Item = (K, V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.node_iter.next() {
-            None => {
-                let mut a: Vec<(K, V)> = Vec::with_capacity(self.limit);
-                self.scan_iter(self.root, &mut a);
-                self.after_key = a.last().map(|x| Bound::Excluded(x.0.clone()));
-                self.node_iter = a.into_iter();
-                self.node_iter.next()
-            }
-            item @ Some(_) => item,
+        let mut paths = match self.paths.take() {
+            Some(paths) => paths,
+            None => return None,
+        };
+        match paths.pop() {
+            None => None,
+            Some(mut path) => match (path.flag, path.nref) {
+                (IFlag::Left, nref) => {
+                    path.flag = IFlag::Center;
+                    paths.push(path);
+                    self.paths = Some(paths);
+                    Some((nref.key.clone(), nref.value.clone()))
+                }
+                (IFlag::Center, nref) => {
+                    path.flag = IFlag::Right;
+                    paths.push(path);
+                    let rnref = nref.right_deref();
+                    self.paths = Some(build_iter(IFlag::Left, rnref, paths));
+                    self.next()
+                }
+                (_, _) => {
+                    self.paths = Some(paths);
+                    self.next()
+                }
+            },
         }
     }
 }
 
-pub struct Range<'a, K, V>
+pub struct Range<'a, K, V, R, Q>
 where
-    K: Clone + Ord,
+    K: Clone + Ord + Borrow<Q>,
     V: Clone,
+    R: RangeBounds<Q>,
+    Q: Ord + ?Sized,
 {
-    root: Option<&'a Node<K, V>>,
-    node_iter: std::vec::IntoIter<(K, V)>,
-    low: Option<Bound<K>>,
-    high: Bound<K>,
-    limit: usize,
+    range: R,
+    paths: Option<Vec<Fragment<'a, K, V>>>,
+    high: marker::PhantomData<Q>,
 }
 
-impl<'a, K, V> Range<'a, K, V>
+impl<'a, K, V, R, Q> Iterator for Range<'a, K, V, R, Q>
 where
-    K: Clone + Ord,
+    K: Clone + Ord + Borrow<Q>,
     V: Clone,
-{
-    pub fn rev(self) -> Reverse<'a, K, V> {
-        Reverse {
-            root: self.root,
-            node_iter: vec![].into_iter(),
-            low: self.low.unwrap(),
-            high: Some(self.high),
-            limit: self.limit,
-        }
-    }
-
-    fn range_iter(
-        &self,
-        node: Option<&Node<K, V>>,
-        acc: &mut Vec<(K, V)>, // accumulator for batch of nodes
-    ) -> bool {
-        if node.is_none() {
-            return true;
-        }
-        let node = node.unwrap();
-
-        let (left, right) = (node.left_deref(), node.right_deref());
-        match &self.low {
-            Some(Bound::Included(qow)) if node.key.lt(qow) => {
-                return self.range_iter(right, acc);
-            }
-            Some(Bound::Excluded(qow)) if node.key.le(qow) => {
-                return self.range_iter(right, acc);
-            }
-            _ => (),
-        }
-
-        if !self.range_iter(left, acc) {
-            return false;
-        }
-
-        acc.push((node.key.clone(), node.value.clone()));
-        if acc.len() >= self.limit {
-            return false;
-        }
-
-        self.range_iter(right, acc)
-    }
-}
-
-impl<'a, K, V> Iterator for Range<'a, K, V>
-where
-    K: Clone + Ord,
-    V: Clone,
+    R: RangeBounds<Q>,
+    Q: Ord + ?Sized,
 {
     type Item = (K, V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let item = match self.node_iter.next() {
-            None if self.low.is_some() => {
-                let mut acc: Vec<(K, V)> = Vec::with_capacity(self.limit);
-                self.range_iter(self.root, &mut acc);
-                self.low = acc.last().map(|x| Bound::Excluded(x.0.clone()));
-                self.node_iter = acc.into_iter();
-                self.node_iter.next()
-            }
-            None => None,
-            item @ Some(_) => item,
+        let mut paths = match self.paths.take() {
+            Some(paths) => paths,
+            None => return None,
         };
-        // check for lower bound
+
+        let item = match paths.pop() {
+            None => None,
+            Some(mut path) => match (path.flag, path.nref) {
+                (IFlag::Left, nref) => {
+                    path.flag = IFlag::Center;
+                    paths.push(path);
+                    self.paths = Some(paths);
+                    Some((nref.key.clone(), nref.value.clone()))
+                }
+                (IFlag::Center, nref) => {
+                    path.flag = IFlag::Right;
+                    paths.push(path);
+                    let rnref = nref.right_deref();
+                    self.paths = Some(build_iter(IFlag::Left, rnref, paths));
+                    self.next()
+                }
+                (_, _) => {
+                    self.paths = Some(paths);
+                    self.next()
+                }
+            },
+        };
         match item {
             None => None,
-            Some(item) => match &self.high {
-                Bound::Unbounded => Some(item),
-                Bound::Included(qigh) if item.0.le(qigh) => Some(item),
-                Bound::Excluded(qigh) if item.0.lt(qigh) => Some(item),
-                _ => {
-                    self.low = None;
+            Some((k, v)) => match self.range.end_bound() {
+                Bound::Included(high) if k.borrow().le(high) => Some((k, v)),
+                Bound::Excluded(high) if k.borrow().lt(high) => Some((k, v)),
+                Bound::Unbounded => Some((k, v)),
+                Bound::Included(_) | Bound::Excluded(_) => {
+                    self.paths.take();
                     None
                 }
             },
@@ -735,85 +679,63 @@ where
     }
 }
 
-pub struct Reverse<'a, K, V>
+pub struct Reverse<'a, K, V, R, Q>
 where
-    K: Clone + Ord,
+    K: Clone + Ord + Borrow<Q>,
     V: Clone,
+    R: RangeBounds<Q>,
+    Q: Ord + ?Sized,
 {
-    root: Option<&'a Node<K, V>>,
-    node_iter: std::vec::IntoIter<(K, V)>,
-    high: Option<Bound<K>>,
-    low: Bound<K>,
-    limit: usize,
+    range: R,
+    paths: Option<Vec<Fragment<'a, K, V>>>,
+    low: marker::PhantomData<Q>,
 }
 
-impl<'a, K, V> Reverse<'a, K, V>
+impl<'a, K, V, R, Q> Iterator for Reverse<'a, K, V, R, Q>
 where
-    K: Clone + Ord,
+    K: Clone + Ord + Borrow<Q>,
     V: Clone,
-{
-    fn reverse_iter(
-        &self,
-        node: Option<&Node<K, V>>,
-        acc: &mut Vec<(K, V)>, // accumulator for batch of nodes
-    ) -> bool {
-        if node.is_none() {
-            return true;
-        }
-        let node = node.unwrap();
-
-        let (left, right) = (node.left_deref(), node.right_deref());
-        match &self.high {
-            Some(Bound::Included(qigh)) if node.key.gt(qigh) => {
-                return self.reverse_iter(left, acc);
-            }
-            Some(Bound::Excluded(qigh)) if node.key.ge(qigh) => {
-                return self.reverse_iter(left, acc);
-            }
-            _ => (),
-        }
-
-        if !self.reverse_iter(right, acc) {
-            return false;
-        }
-
-        acc.push((node.key.clone(), node.value.clone()));
-        if acc.len() >= self.limit {
-            return false;
-        }
-
-        self.reverse_iter(left, acc)
-    }
-}
-
-impl<'a, K, V> Iterator for Reverse<'a, K, V>
-where
-    K: Clone + Ord,
-    V: Clone,
+    R: RangeBounds<Q>,
+    Q: Ord + ?Sized,
 {
     type Item = (K, V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let item = match self.node_iter.next() {
-            None if self.high.is_some() => {
-                let mut acc: Vec<(K, V)> = Vec::with_capacity(self.limit);
-                self.reverse_iter(self.root, &mut acc);
-                self.high = acc.last().map(|x| Bound::Excluded(x.0.clone()));
-                self.node_iter = acc.into_iter();
-                self.node_iter.next()
-            }
-            None => None,
-            item @ Some(_) => item,
+        let mut paths = match self.paths.take() {
+            Some(paths) => paths,
+            None => return None,
         };
-        // check for lower bound
+
+        let item = match paths.pop() {
+            None => None,
+            Some(mut path) => match (path.flag, path.nref) {
+                (IFlag::Right, nref) => {
+                    path.flag = IFlag::Center;
+                    paths.push(path);
+                    self.paths = Some(paths);
+                    Some((nref.key.clone(), nref.value.clone()))
+                }
+                (IFlag::Center, nref) => {
+                    path.flag = IFlag::Left;
+                    paths.push(path);
+                    let rnref = nref.left_deref();
+                    self.paths = Some(build_iter(IFlag::Right, rnref, paths));
+                    self.next()
+                }
+                (_, _) => {
+                    self.paths = Some(paths);
+                    self.next()
+                }
+            },
+        };
         match item {
             None => None,
-            Some(item) => match &self.low {
-                Bound::Unbounded => Some(item),
-                Bound::Included(qow) if item.0.ge(qow) => Some(item),
-                Bound::Excluded(qow) if item.0.gt(qow) => Some(item),
-                _ => {
-                    self.high = None;
+            Some((k, v)) => match self.range.start_bound() {
+                Bound::Included(low) if k.borrow().ge(low) => Some((k, v)),
+                Bound::Excluded(low) if k.borrow().gt(low) => Some((k, v)),
+                Bound::Unbounded => Some((k, v)),
+                Bound::Included(_) | Bound::Excluded(_) => {
+                    self.paths.take();
                     None
                 }
             },
@@ -969,6 +891,120 @@ impl Stats {
             None
         } else {
             self.depths.clone()
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+enum IFlag {
+    Left,
+    Center,
+    Right,
+}
+
+struct Fragment<'a, K, V>
+where
+    K: Clone + Ord,
+    V: Clone,
+{
+    flag: IFlag,
+    nref: &'a Node<K, V>,
+}
+
+fn build_iter<'a, K, V>(
+    flag: IFlag,
+    nref: Option<&'a Node<K, V>>, // subtree
+    mut paths: Vec<Fragment<'a, K, V>>,
+) -> Vec<Fragment<'a, K, V>>
+where
+    K: Clone + Ord,
+    V: Clone,
+{
+    match nref {
+        None => paths,
+        Some(nref) => {
+            let item = Fragment { flag, nref };
+            let nref = match flag {
+                IFlag::Left => nref.left_deref(),
+                IFlag::Right => nref.right_deref(),
+                IFlag::Center => unreachable!(),
+            };
+            paths.push(item);
+            build_iter(flag, nref, paths)
+        }
+    }
+}
+
+fn find_start<'a, K, V, Q>(
+    nref: Option<&'a Node<K, V>>,
+    low: &Q,
+    incl: bool,
+    mut paths: Vec<Fragment<'a, K, V>>,
+) -> Vec<Fragment<'a, K, V>>
+where
+    K: Clone + Ord + Borrow<Q>,
+    V: Clone,
+    Q: Ord + ?Sized,
+{
+    match nref {
+        None => paths,
+        Some(nref) => {
+            let cmp = nref.key.borrow().cmp(low);
+            let flag = match cmp {
+                Ordering::Less => IFlag::Right,
+                Ordering::Equal if incl => IFlag::Left,
+                Ordering::Equal => IFlag::Center,
+                Ordering::Greater => IFlag::Left,
+            };
+            paths.push(Fragment { flag, nref });
+            match cmp {
+                Ordering::Less => {
+                    let nref = nref.right_deref();
+                    find_start(nref, low, incl, paths)
+                }
+                Ordering::Equal => paths,
+                Ordering::Greater => {
+                    let nref = nref.left_deref();
+                    find_start(nref, low, incl, paths)
+                }
+            }
+        }
+    }
+}
+
+fn find_end<'a, K, V, Q>(
+    nref: Option<&'a Node<K, V>>,
+    high: &Q,
+    incl: bool,
+    mut paths: Vec<Fragment<'a, K, V>>,
+) -> Vec<Fragment<'a, K, V>>
+where
+    K: Clone + Ord + Borrow<Q>,
+    V: Clone,
+    Q: Ord + ?Sized,
+{
+    match nref {
+        None => paths,
+        Some(nref) => {
+            let cmp = nref.key.borrow().cmp(high);
+            let flag = match cmp {
+                Ordering::Less => IFlag::Right,
+                Ordering::Equal if incl => IFlag::Right,
+                Ordering::Equal => IFlag::Center,
+                Ordering::Greater => IFlag::Left,
+            };
+            paths.push(Fragment { flag, nref });
+            match cmp {
+                Ordering::Less => {
+                    let nref = nref.right_deref();
+                    find_end(nref, high, incl, paths)
+                }
+                Ordering::Equal => paths,
+                Ordering::Greater => {
+                    let nref = nref.left_deref();
+                    find_end(nref, high, incl, paths)
+                }
+            }
         }
     }
 }
