@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 #[derive(Clone)]
 struct RefNode {
     key: i64,
@@ -16,7 +18,8 @@ impl RefNodes {
     }
 
     fn get(&self, key: i64) -> Option<i64> {
-        let entry = self.entries[key as usize].clone();
+        let off: usize = key.try_into().unwrap();
+        let entry = self.entries[off].clone();
         if entry.key < 0 {
             None
         } else {
@@ -40,13 +43,13 @@ impl RefNodes {
 
     fn range(&self, low: Bound<i64>, high: Bound<i64>) -> std::vec::IntoIter<(i64, i64)> {
         let low = match low {
-            Bound::Included(low) => low as usize,
-            Bound::Excluded(low) => (low + 1) as usize,
+            Bound::Included(low) => low.try_into().unwrap(),
+            Bound::Excluded(low) => (low + 1).try_into().unwrap(),
             Bound::Unbounded => 0,
         };
         let high = match high {
-            Bound::Included(high) => (high + 1) as usize,
-            Bound::Excluded(high) => high as usize,
+            Bound::Included(high) => (high + 1).try_into().unwrap(),
+            Bound::Excluded(high) => high.try_into().unwrap(),
             Bound::Unbounded => self.entries.len(),
         };
         let ok = low < self.entries.len();
@@ -72,13 +75,13 @@ impl RefNodes {
 
     fn reverse(&self, low: Bound<i64>, high: Bound<i64>) -> std::vec::IntoIter<(i64, i64)> {
         let low = match low {
-            Bound::Included(low) => low as usize,
-            Bound::Excluded(low) => (low + 1) as usize,
+            Bound::Included(low) => low.try_into().unwrap(),
+            Bound::Excluded(low) => (low + 1).try_into().unwrap(),
             Bound::Unbounded => 0,
         };
         let high = match high {
-            Bound::Included(high) => (high + 1) as usize,
-            Bound::Excluded(high) => high as usize,
+            Bound::Included(high) => (high + 1).try_into().unwrap(),
+            Bound::Excluded(high) => high.try_into().unwrap(),
             Bound::Unbounded => self.entries.len(),
         };
         //println!("reverse ref compute low high {} {}", low, high);
@@ -105,7 +108,8 @@ impl RefNodes {
     }
 
     fn create(&mut self, key: i64, value: i64) {
-        let entry = &mut self.entries[key as usize];
+        let off: usize = key.try_into().unwrap();
+        let entry = &mut self.entries[off];
         if entry.key < 0 {
             entry.key = key;
             entry.value = value;
@@ -113,7 +117,8 @@ impl RefNodes {
     }
 
     fn set(&mut self, key: i64, value: i64) -> Option<i64> {
-        let entry = &mut self.entries[key as usize];
+        let off: usize = key.try_into().unwrap();
+        let entry = &mut self.entries[off];
         let old_value = if entry.key < 0 {
             None
         } else {
@@ -125,7 +130,8 @@ impl RefNodes {
     }
 
     fn delete(&mut self, key: i64) -> Option<i64> {
-        let entry = &mut self.entries[key as usize];
+        let off: usize = key.try_into().unwrap();
+        let entry = &mut self.entries[off];
         if entry.key < 0 {
             None
         } else {

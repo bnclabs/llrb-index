@@ -826,7 +826,7 @@ where
 ///
 /// * To get partial but quick statistics via [`Llrb::stats`] method.
 /// * To get full statisics via [`Llrb::validate`] method.
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct Stats {
     entries: usize, // number of entries in the tree.
     node_size: usize,

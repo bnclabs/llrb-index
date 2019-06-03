@@ -1,23 +1,28 @@
+// TODO: test cases for Depth.
+
 #[allow(unused_imports)]
 use crate::Llrb;
 
 /// Depth calculates minimum, maximum, average and percentile of leaf-node
 /// depths in the [`Llrb`] tree.
-#[derive(Clone, Default, Debug)]
+#[derive(Clone)]
 pub struct Depth {
     samples: usize,
     min: usize,
     max: usize,
     total: usize,
-    depths: Vec<usize>,
+    depths: [u64; 256],
 }
 
 impl Depth {
     pub(crate) fn new() -> Depth {
-        let mut depth: Depth = Default::default();
-        depth.depths = Vec::with_capacity(256);
-        depth.depths.resize(256, 0);
-        depth
+        Depth {
+            samples: Default::default(),
+            min: Default::default(),
+            max: Default::default(),
+            total: Default::default(),
+            depths: [0; 256],
+        }
     }
 
     pub(crate) fn sample(&mut self, depth: usize) {
@@ -29,7 +34,7 @@ impl Depth {
         if self.max == 0 || depth > self.max {
             self.max = depth
         }
-        self.depths[depth as usize] += 1;
+        self.depths[depth] += 1;
     }
 
     /// Return number of leaf-nodes sampled in [`Llrb`] instance.
@@ -56,11 +61,11 @@ impl Depth {
     /// (percentile, depth). Returned percentiles from 90, 91 .. 99
     pub fn percentiles(&self) -> Vec<(u8, usize)> {
         let mut percentiles: Vec<(u8, usize)> = vec![];
-        let (mut acc, mut prev_perc) = (0_f64, 90_u8);
+        let (mut acc, mut prev_perc) = (0_u64, 90_u8);
         let iter = self.depths.iter().enumerate().filter(|(_, &item)| item > 0);
         for (depth, samples) in iter {
-            acc += *samples as f64;
-            let perc = ((acc / (self.samples as f64)) * 100_f64) as u8;
+            acc += *samples;
+            let perc = ((acc as f64 / self.samples as f64) * 100_f64) as u8;
             if perc >= prev_perc {
                 percentiles.push((perc, depth));
                 prev_perc = perc;
