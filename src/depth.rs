@@ -16,13 +16,7 @@ pub struct Depth {
 
 impl Depth {
     pub(crate) fn new() -> Depth {
-        Depth {
-            samples: Default::default(),
-            min: Default::default(),
-            max: Default::default(),
-            total: Default::default(),
-            depths: [0; 256],
-        }
+        Default::default()
     }
 
     pub(crate) fn sample(&mut self, depth: usize) {
@@ -103,5 +97,17 @@ impl Depth {
             format!("percentiles: {}", ps.join(", ")),
         ];
         ("{ ".to_string() + strs.join(", ").as_str() + " }").to_string()
+    }
+}
+
+impl Default for Depth {
+    fn default() -> Self {
+        Depth {
+            samples: 0,
+            min: 0,
+            max: 0,
+            total: 0,
+            depths: [0; 256],
+        }
     }
 }
