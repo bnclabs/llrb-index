@@ -245,7 +245,7 @@ where
     }
 
     /// Reverse range over all entries from high to low.
-    pub fn reverse<Q, R>(&self, range: R) -> Reverse<K, V, R, Q>
+    pub fn reverse<R, Q>(&self, range: R) -> Reverse<K, V, R, Q>
     where
         K: Borrow<Q>,
         R: RangeBounds<Q>,
