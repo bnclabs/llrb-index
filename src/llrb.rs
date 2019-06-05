@@ -44,6 +44,7 @@ where
         }
     }
 
+    // TODO: refactor this into Extend trait.
     /// Create a new instance of Llrb tree and load it with entries
     /// from `iter`. Note that iterator should return (key, value) tuples,
     /// where key must be ``unique``.
