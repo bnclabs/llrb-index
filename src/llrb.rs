@@ -25,6 +25,21 @@ where
     n_count: usize, // number of entries in the tree.
 }
 
+impl<K, V> Extend<(K, V)> for Llrb<K, V>
+where
+    K: Clone + Ord,
+    V: Clone,
+{
+    fn extend<I>(&mut self, iter: I)
+    where
+        I: IntoIterator<Item = (K, V)>,
+    {
+        iter.into_iter().for_each(|(key, value)| {
+            self.set(key, value);
+        });
+    }
+}
+
 /// Different ways to construct a new Llrb instance.
 impl<K, V> Llrb<K, V>
 where
@@ -42,23 +57,6 @@ where
             root: Default::default(),
             n_count: Default::default(),
         }
-    }
-
-    // TODO: refactor this into Extend trait.
-    /// Create a new instance of Llrb tree and load it with entries
-    /// from `iter`. Note that iterator should return (key, value) tuples,
-    /// where key must be ``unique``.
-    pub fn load_from<S, I>(name: S, iter: I) -> Result<Llrb<K, V>, Error<K>>
-    where
-        S: AsRef<str>,
-        I: Iterator<Item = (K, V)>,
-    {
-        let mut llrb = Llrb::new(name);
-        for (key, value) in iter {
-            llrb.set(key, value);
-            llrb.n_count += 1;
-        }
-        Ok(llrb)
     }
 }
 

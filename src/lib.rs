@@ -22,13 +22,6 @@
 //! assert_eq!(id, "myinstance");
 //! ```
 //!
-//! Constructing [Llrb] instance from an iterator:
-//! ```
-//! use llrb_index::Llrb;
-//! let iter = vec![(1,10), (2,20)].into_iter();
-//! let llrb: Llrb<i32,i32> = Llrb::load_from("myinstance", iter).unwrap();
-//! ```
-//!
 //! CRUD operations on [Llrb] instance:
 //! ```
 //! use llrb_index::Llrb;
