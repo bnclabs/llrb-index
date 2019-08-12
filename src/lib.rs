@@ -117,6 +117,3 @@ pub use crate::empty::Empty;
 pub use crate::error::Error;
 pub use crate::llrb::Llrb;
 pub use crate::llrb::Stats;
-
-#[cfg(test)]
-mod llrb_test;
