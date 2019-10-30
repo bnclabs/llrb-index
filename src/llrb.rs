@@ -821,6 +821,8 @@ where
     }
 }
 
+// TODO: implement Display for Stats.
+
 /// Statistics on [`Llrb`] tree. Serves two purpose:
 ///
 /// * To get partial but quick statistics via [`Llrb::stats`] method.
