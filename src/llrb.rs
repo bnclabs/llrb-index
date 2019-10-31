@@ -10,6 +10,8 @@ use rand::Rng;
 use crate::depth::Depth;
 use crate::error::Error;
 
+// TODO: replace id() with to_name().
+
 /// Llrb manage a single instance of in-memory index using
 /// [left-leaning-red-black][llrb] tree.
 ///
