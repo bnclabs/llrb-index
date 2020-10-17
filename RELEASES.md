@@ -1,5 +1,16 @@
-0.4.0 (PENDING)
+0.5.0 (PENDING)
 =====
+
+0.4.0
+=====
+
+- Change the Range() API, make this similar to std-lib.
+- Rewrite iter(), range() API. performance improvement by ~2x.
+- Replace " as " type-casting with try\_into().unwrap().
+- Implement Default trait for Depth type.
+- Fix reverse API signature.
+- Replace load\_from() with Extend trait.
+- Improve unit-testing.
 
 0.3.0
 =====
