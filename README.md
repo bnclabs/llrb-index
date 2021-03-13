@@ -1,3 +1,6 @@
+**IMPORTANT: This project is archived and moved into [ppom][ppom] which implements
+an ephemeral ordered-map, like this one, among other things.**
+
 Left Leaning Red Black Tree
 ===========================
 
@@ -41,3 +44,4 @@ compiler and nightly builds.
 [agpl]: https://github.com/bnclabs/llrb-index/blob/master/LICENSE
 [#1]: https://github.com/bnclabs/llrb-index/issues/1
 [disc1]: https://users.rust-lang.org/t/what-would-be-proper-api-for-index-get/28730/5
+[ppom]: https://github.com/bnclabs/ppom
